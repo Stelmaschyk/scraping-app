@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-jobs-tags-table
+      author: svg
+      changes:
+        - createTable:
+            tableName: job_tags
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: job_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tag_name
+                  type: text
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: job_tags
+            baseColumnNames: job_id
+            constraintName: fk_job_tags_job_id
+            referencedTableName: jobs
+            referencedColumnNames: id
+        - createIndex:
+            tableName: job_tags
+            indexName: idx_job_tags_tag_name
+            columns:
+              - column:
+                  name: tag_name

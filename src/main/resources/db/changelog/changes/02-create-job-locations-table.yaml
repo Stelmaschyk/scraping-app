@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-jobs-locations-table
+      author: svg
+      changes:
+        - createTable:
+            tableName: job_locations
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: job_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: location
+                  type: text
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: job_locations
+            baseColumnNames: job_id
+            constraintName: fk_job_locations_job_id
+            referencedTableName: jobs
+            referencedColumnNames: id

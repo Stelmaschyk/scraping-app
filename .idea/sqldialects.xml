@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="SqlDialectMappings">
-    <file url="file://$PROJECT_DIR$/src/main/resources/db/V2__widen_job_columns_to_text.sql" dialect="PostgreSQL" />
-  </component>
-</project>

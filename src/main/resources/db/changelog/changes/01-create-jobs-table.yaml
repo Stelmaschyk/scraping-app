@@ -1,0 +1,73 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-jobs-table
+      author: svg
+      changes:
+        - createTable:
+            tableName: jobs
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: position_name
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: job_page_url
+                  type: text
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: organization_url
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: logo_url
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: organization_title
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: labor_function
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: address
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: posted_date
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+                  constraints:
+                    nullable: false
+#        - createIndex:
+#            tableName: jobs
+#            indexName: idx_jobs_labor_function
+#            columns:
+#              - column:
+#                  name: labor_function
+#        - createIndex:
+#            tableName: jobs
+#            indexName: idx_jobs_posted_date
+#            columns:
+#              - column:
+#                  name: posted_date

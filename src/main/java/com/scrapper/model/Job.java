@@ -25,14 +25,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Table(
-    name = "jobs",
-    indexes = {
-        @Index(name = "idx_jobs_labor_function", columnList = "labor_function"),
-        @Index(name = "idx_jobs_posted_date", columnList = "posted_date"),
-        @Index(name = "idx_jobs_organization", columnList = "organization_title"),
-        @Index(name = "idx_jobs_url", columnList = "job_page_url", unique = true)
-    }
-)
+    name = "jobs")
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
