@@ -39,21 +39,5 @@ public class LogoIngestServiceImpl implements LogoIngestService {
             return false;
         }
     }
-    
-    @Override
-    @Transactional
-    public void clearLogoForJob(Long jobId) {
-        try {
-            Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found with id: " + jobId));
-            
-            job.setLogoUrl(null);
-            jobRepository.save(job);
-            
-            log.info("🗑️ Cleared logo for job {}", jobId);
-        } catch (Exception e) {
-            log.error("❌ Error clearing logo for job {}: {}", jobId, e.getMessage());
-        }
-    }
 }
 

@@ -45,23 +45,5 @@ public class PostedDateIngestServiceImpl implements PostedDateIngestService {
             return false;
         }
     }
-    
-    @Override
-    @Transactional
-    public void clearPostedDateForJob(Long jobId) {
-        try {
-            Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found with id: " + jobId));
-            
-            // ✅ ВИПРАВЛЕНО: Встановлюємо поточний час як Unix Timestamp
-            job.setCurrentTimeAsPostedDate();
-            jobRepository.save(job);
-            
-            log.info("🗑️ Cleared posted date for job {} (set to current time: Unix: {})", 
-                    jobId, job.getPostedDate());
-        } catch (Exception e) {
-            log.error("❌ Error clearing posted date for job {}: {}", jobId, e.getMessage());
-        }
-    }
 }
 

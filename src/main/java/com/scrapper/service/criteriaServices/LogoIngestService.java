@@ -9,11 +9,5 @@ public interface LogoIngestService {
      * @return true якщо збережено успішно
      */
     boolean saveLogoForJob(Long jobId, String logoUrl);
-    
-    /**
-     * Очищає логотип для вакансії
-     * @param jobId ID вакансії
-     */
-    void clearLogoForJob(Long jobId);
 }
 

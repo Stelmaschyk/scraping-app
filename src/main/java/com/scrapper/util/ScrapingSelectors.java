@@ -6,40 +6,19 @@ public class ScrapingSelectors {
 
     // Селектори для карток вакансій (використовуються в DirectJobScraperServiceImpl та ApplyUrlScraperServiceImpl)
     public static final String[] JOB_CARD = new String[]{
-        // ✅ ОНОВЛЕНО: Більш точні селектори для пошуку реальних карток вакансій
+        // ✅ ОПТИМІЗОВАНО: Залишено тільки працюючі селектори на основі логів
         
-        // Точні селектори на основі реального HTML (найвищий пріоритет)
-        "div[data-testid=job-card]",
-        "div[data-testid=job-item]",
-        "div[data-testid=job]",
-        "div[data-testid=position]",
-        "div[data-testid=vacancy]",
-        "div[data-testid=opportunity]",
-
-        // Селектори для конкретних класів з HTML (на основі реального коду)
-        "div.sc-dmqHEX.bpXRKw",
-        "div.sc-beqWaB.jfIxNQ",
-        "div[class*='sc-']:has([data-testid=job-title])",
-        "div[class*='sc-']:has([data-testid=organization-name])",
-        "div[class*='sc-']:has([data-testid=job-function])",
-
-        // Загальні селектори для карток
-        "[data-testid=job-card]",
-        "[data-testid=job-item]",
-        "[data-testid=job]",
-        "[data-testid=position]",
-        "[data-testid=vacancy]",
-        "[data-testid=opportunity]",
-
-        // Селектори на основі класів
+        // Селектор, який дійсно працює (знаходить 220 елементів)
         "[class*='job-card']",
+        
+        // Запасні селектори, які можуть працювати
         "[class*='job-item']",
         "[class*='position-card']",
         "[class*='vacancy-card']",
         "[class*='opportunity-card']",
         "div[class*='JobCard']",
         "div[class*='JobItem']",
-
+        
         // Селектори на основі структури
         "div:has([data-testid=job-title])",
         "div:has([data-testid=organization-name])",
@@ -47,7 +26,7 @@ public class ScrapingSelectors {
         "div:has([data-testid=tag])",
         "div[role=article]",
         "div[role=listitem]",
-
+        
         // Запасні селектори
         ".job-card",
         ".job-item",

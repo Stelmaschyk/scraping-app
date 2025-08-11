@@ -29,8 +29,6 @@ import com.scrapper.service.criteriaServices.PostedDateIngestService;
 import com.scrapper.service.criteriaServices.LogoIngestService;
 import com.scrapper.service.criteriaServices.TitleIngestService;
 import com.scrapper.service.criteriaServices.DescriptionIngestService;
-import com.scrapper.validation.Validation;
-import com.scrapper.service.criteriaServices.DateParsingService;
 
 /**
  * ✅ ОНОВЛЕНИЙ СЕРВІС: Змінена логіка фільтрації з гібридним завантаженням
@@ -95,7 +93,6 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
     private final TitleIngestService titleIngestService;
     private final DescriptionIngestService descriptionIngestService;
     private final JobCreationService jobCreationService;
-    private final DateParsingService dateParsingService;
 
     private WebDriver initializeWebDriver() {
         WebDriverManager.chromedriver().setup();
@@ -360,7 +357,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         String pageSource = driver.getPageSource();
         log.info("📄 Page source length: {} characters", pageSource.length());
         
-        // ✅ ОПТИМІЗОВАНО: Залишено тільки працюючі селектори
+        // Перевіряємо різні селектори
         String[] alternativeSelectors = {
             "div[class*='job']",
             "div[class*='position']", 
@@ -369,6 +366,9 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             "div[class*='item']",
             "div[class*='listing']",
             "div[class*='posting']",
+            "[data-testid*='job']",
+            "[data-testid*='position']",
+            "[data-testid*='card']",
             ".job-card",
             ".position-card",
             ".vacancy-card",
@@ -974,42 +974,16 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         // ✅ ДОДАНО: Детальне логування для діагностики
         log.info("🔍 Testing {} specific selectors from ScrapingSelectors.JOB_CARD", ScrapingSelectors.JOB_CARD.length);
         
-        // ✅ ОПТИМІЗОВАНО: Спочатку тестуємо найбільш ймовірний селектор
-        String primarySelector = "[class*='job-card']";
-        try {
-            List<WebElement> elements = driver.findElements(By.cssSelector(primarySelector));
-            log.info("🔍 Primary selector '{}' -> found {} elements", primarySelector, elements.size());
-            
-            if (!elements.isEmpty()) {
-                                    // ✅ ДОДАНО: Валідація елементів - фільтруємо неправильні
-                    List<WebElement> validElements = Validation.filterValidJobCards(elements);
-                log.info("🔍 After validation: {} valid elements out of {} total", validElements.size(), elements.size());
-                
-                if (!validElements.isEmpty()) {
-                    log.info("✅ Found {} valid job cards with primary selector: '{}'", validElements.size(), primarySelector);
-                    return validElements;
-                }
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Primary selector '{}' failed: {}", primarySelector, e.getMessage());
-        }
-        
-        // Спробуємо інші селектори з ScrapingSelectors.JOB_CARD
+        // Спробуємо всі селектори з ScrapingSelectors.JOB_CARD
         for (int i = 0; i < ScrapingSelectors.JOB_CARD.length; i++) {
             String selector = ScrapingSelectors.JOB_CARD[i];
-            
-            // Пропускаємо основний селектор, який вже перевірили
-            if (selector.equals(primarySelector)) {
-                continue;
-            }
-            
             try {
                 List<WebElement> elements = driver.findElements(By.cssSelector(selector));
                 log.info("🔍 Selector {}: '{}' -> found {} elements", i + 1, selector, elements.size());
                 
                 if (!elements.isEmpty()) {
                     // ✅ ДОДАНО: Валідація елементів - фільтруємо неправильні
-                    List<WebElement> validElements = Validation.filterValidJobCards(elements);
+                    List<WebElement> validElements = filterValidJobCards(elements);
                     log.info("🔍 After validation: {} valid elements out of {} total", validElements.size(), elements.size());
                     
                     if (!validElements.isEmpty()) {
@@ -1410,17 +1384,110 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             if (!metaElements.isEmpty()) {
                 String dateStr = metaElements.get(0).getAttribute("content");
                 if (dateStr != null && !dateStr.trim().isEmpty()) {
-                    // ✅ ВИПРАВЛЕНО: Використовуємо DateParsingService для парсингу дати з meta тегу
-                    LocalDateTime date = dateParsingService.parseMetaDate(dateStr);
-                    if (date != null) {
-                        log.info("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})", 
-                                dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
-                        return date;
+                    try {
+                        // ✅ ВИПРАВЛЕНО: Правильний парсинг дати формату YYYY-MM-DD
+                        if (dateStr.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                            LocalDateTime date = LocalDateTime.parse(dateStr.trim() + "T00:00:00");
+                            log.info("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})", 
+                                    dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
+                            return date;
+                        } else {
+                            // Спробуємо парсити як повну дату з часом
+                            LocalDateTime date = LocalDateTime.parse(dateStr.trim());
+                            log.info("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})", 
+                                    dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
+                            return date;
+                        }
+                    } catch (Exception e) {
+                        log.debug("⚠️ Could not parse date from meta: '{}', error: {}", dateStr, e.getMessage());
                     }
                 }
             }
             
-
+            // ✅ ДОДАНО: Шукаємо в інших meta тегах з датою
+            List<WebElement> allMetaElements = card.findElements(By.cssSelector("meta"));
+            for (WebElement meta : allMetaElements) {
+                String name = meta.getAttribute("name");
+                String content = meta.getAttribute("content");
+                if (content != null && content.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                    try {
+                        LocalDateTime postedDate = LocalDateTime.parse(content.trim() + "T00:00:00");
+                        log.debug("📅 Found posted date in meta[name='{}']: '{}' -> {}", name, content, postedDate);
+                        return postedDate;
+                    } catch (Exception e) {
+                        log.debug("⚠️ Could not parse date from meta[name='{}']: '{}'", name, content);
+                    }
+                }
+            }
+            
+            // ✅ ДОДАНО: Шукаємо в time елементах
+            List<WebElement> timeElements = card.findElements(By.cssSelector("time"));
+            for (WebElement time : timeElements) {
+                String datetime = time.getAttribute("datetime");
+                if (datetime != null && !datetime.trim().isEmpty()) {
+                    try {
+                        LocalDateTime postedDate = LocalDateTime.parse(datetime.trim());
+                        log.debug("📅 Found posted date in time[datetime]: '{}' -> {}", datetime, postedDate);
+                        return postedDate;
+                    } catch (Exception e) {
+                        log.debug("⚠️ Could not parse date from time[datetime]: '{}'", datetime);
+                    }
+                }
+            }
+            
+            // ✅ ДОДАНО: Шукаємо в елементах з атрибутом datetime
+            List<WebElement> datetimeElements = card.findElements(By.cssSelector("[datetime]"));
+            for (WebElement element : datetimeElements) {
+                String datetime = element.getAttribute("datetime");
+                if (datetime != null && !datetime.trim().isEmpty()) {
+                    try {
+                        LocalDateTime postedDate = LocalDateTime.parse(datetime.trim());
+                        log.debug("📅 Found posted date in [datetime]: '{}' -> {}", datetime, postedDate);
+                        return postedDate;
+                    } catch (Exception e) {
+                        log.debug("⚠️ Could not parse date from [datetime]: '{}'", datetime);
+                    }
+                }
+            }
+            
+            // Якщо meta не знайдено, шукаємо в звичайних елементах
+            String dateText = getElementText(card, ScrapingSelectors.POSTED_DATE[0]);
+            if (dateText != null && !dateText.trim().isEmpty()) {
+                log.debug("📅 Found posted date text: '{}'", dateText);
+                // ✅ ВИПРАВЛЕНО: Покращена логіка парсингу тексту дати
+                LocalDateTime parsedDate = parseDateText(dateText.trim());
+                if (parsedDate != null) {
+                    return parsedDate;
+                }
+                // Якщо не вдалося розпарсити, повертаємо поточну дату
+                log.debug("⚠️ Could not parse date text: '{}', using current date", dateText);
+                LocalDateTime fallbackDate = LocalDateTime.now();
+                log.debug("📅 Using fallback date: {} (Unix: {})", fallbackDate, fallbackDate.toEpochSecond(java.time.ZoneOffset.UTC));
+                return fallbackDate;
+            }
+            
+            // ✅ ДОДАНО: Шукаємо в тексті всіх елементів картки
+            String cardText = card.getText();
+            if (cardText != null && !cardText.trim().isEmpty()) {
+                // Шукаємо патерни дати в тексті
+                String[] datePatterns = {
+                    "\\d{4}-\\d{2}-\\d{2}", // YYYY-MM-DD
+                    "\\d{1,2}/\\d{1,2}/\\d{4}", // MM/DD/YYYY
+                    "\\d{1,2}\\.\\d{1,2}\\.\\d{4}", // DD.MM.YYYY
+                    "\\d{1,2}\\s+\\w+\\s+\\d{4}" // DD Month YYYY
+                };
+                
+                for (String pattern : datePatterns) {
+                    if (cardText.matches(".*" + pattern + ".*")) {
+                        log.debug("📅 Found date pattern '{}' in card text", pattern);
+                        // Спробуємо розпарсити знайдену дату
+                        LocalDateTime parsedDate = parseDateText(cardText);
+                        if (parsedDate != null) {
+                            return parsedDate;
+                        }
+                    }
+                }
+            }
             
         } catch (Exception e) {
             log.debug("⚠️ Error extracting posted date: {}", e.getMessage());
@@ -1432,7 +1499,80 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         return currentDate;
     }
 
-
+    /**
+     * ✅ НОВИЙ МЕТОД: Парсинг тексту дати (Today, Yesterday, X days ago, etc.)
+     */
+    private LocalDateTime parseDateText(String dateText) {
+        try {
+            String lowerText = dateText.toLowerCase().trim();
+            LocalDateTime now = LocalDateTime.now();
+            
+            if (lowerText.contains("today") || lowerText.contains("сьогодні")) {
+                LocalDateTime today = now;
+                log.debug("📅 Parsed 'Today' as: {} (Unix: {})", today, today.toEpochSecond(java.time.ZoneOffset.UTC));
+                return today;
+            } else if (lowerText.contains("yesterday") || lowerText.contains("вчора")) {
+                LocalDateTime yesterday = now.minusDays(1);
+                log.debug("📅 Parsed 'Yesterday' as: {} (Unix: {})", yesterday, yesterday.toEpochSecond(java.time.ZoneOffset.UTC));
+                return yesterday;
+            } else if (lowerText.contains("days ago") || lowerText.contains("днів тому")) {
+                // Шукаємо число перед "days ago"
+                String numberMatch = dateText.replaceAll("(?i).*?(\\d+)\\s*(?:days?|днів?)\\s*ago.*", "$1");
+                if (numberMatch.matches("\\d+")) {
+                    int days = Integer.parseInt(numberMatch);
+                    LocalDateTime daysAgo = now.minusDays(days);
+                    log.debug("📅 Parsed '{} days ago' as: {} (Unix: {})", days, daysAgo, daysAgo.toEpochSecond(java.time.ZoneOffset.UTC));
+                    return daysAgo;
+                }
+            } else if (lowerText.contains("hours ago") || lowerText.contains("годин тому")) {
+                // Шукаємо число перед "hours ago"
+                String numberMatch = dateText.replaceAll("(?i).*?(\\d+)\\s*(?:hours?|годин?)\\s*ago.*", "$1");
+                if (numberMatch.matches("\\d+")) {
+                    int hours = Integer.parseInt(numberMatch);
+                    LocalDateTime hoursAgo = now.minusHours(hours);
+                    log.debug("📅 Parsed '{} hours ago' as: {} (Unix: {})", hours, hoursAgo, hoursAgo.toEpochSecond(java.time.ZoneOffset.UTC));
+                    return hoursAgo;
+                }
+            } else if (lowerText.contains("minutes ago") || lowerText.contains("хвилин тому")) {
+                // Шукаємо число перед "minutes ago"
+                String numberMatch = dateText.replaceAll("(?i).*?(\\d+)\\s*(?:minutes?|хвилин?)\\s*ago.*", "$1");
+                if (numberMatch.matches("\\d+")) {
+                    int minutes = Integer.parseInt(numberMatch);
+                    LocalDateTime minutesAgo = now.minusMinutes(minutes);
+                    log.debug("📅 Parsed '{} minutes ago' as: {} (Unix: {})", minutes, minutesAgo, minutesAgo.toEpochSecond(java.time.ZoneOffset.UTC));
+                    return minutesAgo;
+                }
+            } else if (lowerText.contains("weeks ago") || lowerText.contains("тижнів тому")) {
+                // Шукаємо число перед "weeks ago"
+                String numberMatch = dateText.replaceAll("(?i).*?(\\d+)\\s*(?:weeks?|тижнів?)\\s*ago.*", "$1");
+                if (numberMatch.matches("\\d+")) {
+                    int weeks = Integer.parseInt(numberMatch);
+                    LocalDateTime weeksAgo = now.minusWeeks(weeks);
+                    log.debug("📅 Parsed '{} weeks ago' as: {} (Unix: {})", weeks, weeksAgo, weeksAgo.toEpochSecond(java.time.ZoneOffset.UTC));
+                    return weeksAgo;
+                }
+            }
+            
+            // Спробуємо парсити як ISO дату
+            if (dateText.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                LocalDateTime isoDate = LocalDateTime.parse(dateText + "T00:00:00");
+                log.debug("📅 Parsed ISO date '{}' as: {} (Unix: {})", dateText, isoDate, isoDate.toEpochSecond(java.time.ZoneOffset.UTC));
+                return isoDate;
+            }
+            
+            // Спробуємо парсити як повну ISO дату з часом
+            if (dateText.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")) {
+                LocalDateTime fullIsoDate = LocalDateTime.parse(dateText);
+                log.debug("📅 Parsed full ISO date '{}' as: {} (Unix: {})", dateText, fullIsoDate, fullIsoDate.toEpochSecond(java.time.ZoneOffset.UTC));
+                return fullIsoDate;
+            }
+            
+        } catch (Exception e) {
+            log.debug("⚠️ Error parsing date text '{}': {}", dateText, e.getMessage());
+        }
+        
+        return null;
+    }
 
     /**
      * ✅ НОВИЙ МЕТОД: Витягує URL логотипу з картки вакансії
@@ -1747,7 +1887,88 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         return "Unknown Position";
     }
 
-
+    /**
+     * ✅ НОВИЙ МЕТОД: Фільтрує елементи, щоб знайти тільки реальні картки вакансій
+     */
+    private List<WebElement> filterValidJobCards(List<WebElement> elements) {
+        List<WebElement> validCards = new ArrayList<>();
+        
+        for (WebElement element : elements) {
+            try {
+                // Перевіряємо, чи це реальна картка вакансії
+                if (isValidJobCard(element)) {
+                    validCards.add(element);
+                }
+            } catch (Exception e) {
+                log.debug("⚠️ Error validating element: {}", e.getMessage());
+            }
+        }
+        
+        return validCards;
+    }
+    
+    /**
+     * ✅ НОВИЙ МЕТОД: Перевіряє, чи є елемент реальною карткою вакансії
+     */
+    private boolean isValidJobCard(WebElement element) {
+        try {
+            String text = element.getText().toLowerCase();
+            
+            // ✅ Фільтруємо навігаційні елементи та фільтри
+            String[] navigationKeywords = {
+                "search", "explore", "join", "my", "job alerts", "on-site", "remote", 
+                "job function", "seniority", "salary", "industry", "company stage", 
+                "more filters", "create job alert", "powered by", "showing", "jobs",
+                "companies", "talent network", "claim your profile"
+            };
+            
+            for (String keyword : navigationKeywords) {
+                if (text.contains(keyword.toLowerCase())) {
+                    return false; // Це навігаційний елемент
+                }
+            }
+            
+            // ✅ Перевіряємо, чи містить елемент посилання на вакансію
+            try {
+                List<WebElement> links = element.findElements(By.cssSelector("a[href*='/jobs/'], a[href*='/companies/']"));
+                if (links.isEmpty()) {
+                    return false; // Немає посилань на вакансії
+                }
+            } catch (Exception e) {
+                return false; // Помилка при пошуку посилань
+            }
+            
+            // ✅ Перевіряємо, чи містить елемент інформацію про вакансію
+            String[] jobKeywords = {
+                "engineer", "designer", "manager", "developer", "analyst", "specialist",
+                "coordinator", "director", "lead", "senior", "junior", "full-time",
+                "part-time", "remote", "onsite", "hybrid", "salary", "experience"
+            };
+            
+            boolean hasJobInfo = false;
+            for (String keyword : jobKeywords) {
+                if (text.contains(keyword.toLowerCase())) {
+                    hasJobInfo = true;
+                    break;
+                }
+            }
+            
+            if (!hasJobInfo) {
+                return false; // Немає інформації про вакансію
+            }
+            
+            // ✅ Перевіряємо розмір тексту (картка вакансії має бути достатньо великою)
+            if (text.length() < 50) {
+                return false; // Занадто короткий текст
+            }
+            
+            return true; // Це схоже на реальну картку вакансії
+            
+        } catch (Exception e) {
+            log.debug("⚠️ Error checking if element is valid job card: {}", e.getMessage());
+            return false;
+        }
+    }
 
     /**
      * ✅ НОВИЙ МЕТОД: Екстракція заголовка з детальної сторінки
@@ -1857,22 +2078,48 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
      */
     private LocalDateTime extractPostedDateFromDetailPage(WebDriver driver) {
         try {
-            // ✅ ВИПРАВЛЕНО: Спочатку шукаємо в meta тегах
+            // Спочатку шукаємо в meta тегах
             List<WebElement> metaElements = driver.findElements(By.cssSelector("meta[itemprop='datePosted']"));
             if (!metaElements.isEmpty()) {
                 String dateStr = metaElements.get(0).getAttribute("content");
                 if (dateStr != null && !dateStr.trim().isEmpty()) {
-                    // ✅ ВИПРАВЛЕНО: Використовуємо DateParsingService для парсингу дати з meta тегу
-                    LocalDateTime date = dateParsingService.parseMetaDate(dateStr);
-                    if (date != null) {
-                        log.info("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})", 
-                                dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
-                        return date;
+                    try {
+                        // ✅ ВИПРАВЛЕНО: Правильний парсинг дати формату YYYY-MM-DD
+                        if (dateStr.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                            LocalDateTime date = LocalDateTime.parse(dateStr.trim() + "T00:00:00");
+                            log.info("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})", 
+                                    dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
+                            return date;
+                        } else {
+                            // Спробуємо парсити як повну дату з часом
+                            LocalDateTime date = LocalDateTime.parse(dateStr.trim());
+                            log.info("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})", 
+                                    dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
+                            return date;
+                        }
+                    } catch (Exception e) {
+                        log.warn("⚠️ Could not parse date from meta tag: '{}', error: {}", dateStr, e.getMessage());
                     }
                 }
             }
             
-
+            // Потім шукаємо в div елементах
+            for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
+                if (selector.contains("enQFes")) {
+                    List<WebElement> elements = driver.findElements(By.cssSelector(selector));
+                    for (WebElement element : elements) {
+                        String text = element.getText().trim();
+                        if (text.contains("Posted") || text.contains("Today") || text.matches(".*\\d{4}-\\d{2}-\\d{2}.*")) {
+                            // ✅ ВИПРАВЛЕНО: Використовуємо покращений парсинг тексту дати
+                            LocalDateTime parsedDate = parseDateText(text);
+                            if (parsedDate != null) {
+                                log.info("✅ Extracted posted date from div: '{}' -> {}", text, parsedDate);
+                                return parsedDate;
+                            }
+                        }
+                    }
+                }
+            }
         } catch (Exception e) {
             log.warn("⚠️ Error extracting posted date from detail page: {}", e.getMessage());
         }
@@ -1900,7 +2147,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             }
             
             // Фільтруємо неправильні елементи
-            jobCards = Validation.filterValidJobCards(jobCards);
+            jobCards = filterValidJobCards(jobCards);
             
         } catch (Exception e) {
             log.warn("⚠️ Error finding job cards on company page: {}", e.getMessage());

@@ -39,20 +39,4 @@ public class PositionNameIngestServiceImpl implements PositionNameIngestService 
             return false;
         }
     }
-    
-    @Override
-    @Transactional
-    public void clearPositionNameForJob(Long jobId) {
-        try {
-            Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found with id: " + jobId));
-            
-            job.setPositionName(null);
-            jobRepository.save(job);
-            
-            log.info("🗑️ Cleared position name for job {}", jobId);
-        } catch (Exception e) {
-            log.error("❌ Error clearing position name for job {}: {}", jobId, e.getMessage());
-        }
-    }
 }

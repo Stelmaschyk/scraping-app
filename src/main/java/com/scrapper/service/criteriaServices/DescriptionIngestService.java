@@ -20,20 +20,4 @@ public interface DescriptionIngestService {
      * @return true якщо опис успішно збережено
      */
     boolean saveDescription(Job job, String description);
-    
-    /**
-     * Знаходить опис вакансії за ID вакансії
-     * 
-     * @param jobId ID вакансії
-     * @return опис вакансії або null якщо не знайдено
-     */
-    String findDescriptionByJobId(Long jobId);
-    
-    /**
-     * Видаляє опис вакансії
-     * 
-     * @param jobId ID вакансії
-     * @return true якщо опис успішно видалено
-     */
-    boolean deleteDescription(Long jobId);
 }

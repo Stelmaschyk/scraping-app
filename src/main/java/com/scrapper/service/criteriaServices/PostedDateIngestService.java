@@ -11,11 +11,5 @@ public interface PostedDateIngestService {
      * @return true якщо збережено успішно
      */
     boolean savePostedDateForJob(Long jobId, LocalDateTime postedDate);
-    
-    /**
-     * Очищає дату публікації для вакансії
-     * @param jobId ID вакансії
-     */
-    void clearPostedDateForJob(Long jobId);
 }
 

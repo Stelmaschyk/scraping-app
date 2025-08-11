@@ -50,45 +50,4 @@ public class DescriptionIngestServiceImpl implements DescriptionIngestService {
             return false;
         }
     }
-
-    @Override
-    public String findDescriptionByJobId(Long jobId) {
-        try {
-            if (jobId == null) {
-                log.warn("⚠️ Cannot find description: job ID is null");
-                return null;
-            }
-            
-            // TODO: Додати логіку пошуку в базі даних
-            // JobDescription jobDescription = descriptionRepository.findByJobId(jobId);
-            // return jobDescription != null ? jobDescription.getDescription() : null;
-            
-            log.debug("🔍 Description not found for job ID: {} (repository not implemented yet)", jobId);
-            return null;
-            
-        } catch (Exception e) {
-            log.error("❌ Error finding description for job ID: {}, error: {}", jobId, e.getMessage(), e);
-            return null;
-        }
-    }
-
-    @Override
-    public boolean deleteDescription(Long jobId) {
-        try {
-            if (jobId == null) {
-                log.warn("⚠️ Cannot delete description: job ID is null");
-                return false;
-            }
-            
-            // TODO: Додати логіку видалення з бази даних
-            // descriptionRepository.deleteByJobId(jobId);
-            
-            log.info("✅ Successfully deleted description for job ID: {}", jobId);
-            return true;
-            
-        } catch (Exception e) {
-            log.error("❌ Error deleting description for job ID: {}, error: {}", jobId, e.getMessage(), e);
-            return false;
-        }
-    }
 }

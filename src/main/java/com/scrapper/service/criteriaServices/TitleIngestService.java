@@ -9,11 +9,5 @@ public interface TitleIngestService {
      * @return true якщо збережено успішно
      */
     boolean saveTitleForJob(Long jobId, String title);
-    
-    /**
-     * Очищає назву позиції для вакансії
-     * @param jobId ID вакансії
-     */
-    void clearTitleForJob(Long jobId);
 }
 

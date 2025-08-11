@@ -11,11 +11,5 @@ public interface TagIngestService {
      * @return кількість збережених тегів
      */
     int saveTagsForJob(Long jobId, List<String> tags);
-    
-    /**
-     * Очищає всі теги для вакансії
-     * @param jobId ID вакансії
-     */
-    void clearTagsForJob(Long jobId);
 }
 

@@ -45,21 +45,5 @@ public class TagIngestServiceImpl implements TagIngestService {
         log.info("✅ Tags saving completed for job {}. Saved: {}/{}", jobId, savedCount, tags.size());
         return savedCount;
     }
-    
-    @Override
-    @Transactional
-    public void clearTagsForJob(Long jobId) {
-        try {
-            Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found with id: " + jobId));
-            
-            job.getTags().clear();
-            jobRepository.save(job);
-            
-            log.info("🗑️ Cleared all tags for job {}", jobId);
-        } catch (Exception e) {
-            log.error("❌ Error clearing tags for job {}: {}", jobId, e.getMessage());
-        }
-    }
 }
 

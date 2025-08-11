@@ -9,10 +9,4 @@ public interface PositionNameIngestService {
      * @return true якщо збережено успішно
      */
     boolean savePositionNameForJob(Long jobId, String positionName);
-    
-    /**
-     * Очистити назву позиції для вакансії
-     * @param jobId ID вакансії
-     */
-    void clearPositionNameForJob(Long jobId);
 }
