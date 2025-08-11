@@ -88,12 +88,6 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
     private static final String LOAD_MORE_SELECTOR = ScrapingSelectors.LOAD_MORE_BUTTON[0];
     private static final String JOB_CARD_SELECTOR = ScrapingSelectors.JOB_CARD[0];
 
-    // ✅ ДОДАНО: Нові сервіси для збереження додаткової інформації
-    private final TagIngestService tagIngestService;
-    private final LocationIngestService locationIngestService;
-    private final PostedDateIngestService postedDateIngestService;
-    private final LogoIngestService logoIngestService;
-    private final TitleIngestService titleIngestService;
     private final DescriptionIngestService descriptionIngestService;
     private final JobCreationService jobCreationService;
     private final DateParsingService dateParsingService;
@@ -136,43 +130,32 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
     }
 
     @Override
-    public List<String> fetchApplyUrls(List<String> jobFunctions, List<String> requiredTags) {
+    public List<String> fetchApplyUrls(List<String> jobFunctions) {
         Objects.requireNonNull(jobFunctions, "jobFunctions cannot be null");
         
-        log.info("🚀 Starting Selenium scraping with NEW LOGIC: jobFunctions={}, tags={}", 
-                jobFunctions, 
-                requiredTags);
+        log.info("🚀 Starting Selenium scraping with NEW LOGIC: jobFunctions={}", 
+                jobFunctions);
 
         WebDriver driver = null;
         try {
             driver = initializeWebDriver();
-            
-            // ✅ ВИПРАВЛЕНО: Завжди переходимо на основний, нефільтрований URL
             log.info("📍 Navigating to base URL: {}", baseUrl);
             driver.get(baseUrl);
-            
-            // ✅ ОПТИМІЗОВАНО: Швидке завантаження сторінки
             log.info("⏳ Quick page load...");
-            sleep(3000); // Зменшуємо до 3 секунд
-            
-            // ✅ ОПТИМІЗОВАНО: Базова перевірка сторінки
+            sleep(3000);
             String pageTitle = driver.getTitle();
             String currentUrl = driver.getCurrentUrl();
             log.info("📄 Page loaded - Title: '{}', URL: '{}'", pageTitle, currentUrl);
-            
-            // ✅ ОПТИМІЗОВАНО: Швидка перевірка елементів
             int initialElements = driver.findElements(By.cssSelector("*")).size();
             log.info("🔍 Total elements on page: {}", initialElements);
-            
             if (initialElements < 50) {
                 log.warn("⚠️ Page seems to be empty! Only {} elements found", initialElements);
-                // ✅ ОПТИМІЗОВАНО: Коротка затримка
                 sleep(2000);
             }
             
             // ✅ ОНОВЛЕНО: Використовуємо нову гібридну логіку з правильним порядком
             log.info("🔍 Applying NEW HYBRID LOGIC: 1) job functions → 2) Load More (ОДИН раз) → 3) нескінченна прокрутка → 4) URL → 5) префікс компанії → 6) збір тегів");
-            List<Job> jobs = scrapeAllJobsWithImprovedLogic(driver, requiredTags, jobFunctions);
+            List<Job> jobs = scrapeAllJobsWithImprovedLogic(driver, jobFunctions);
             
             log.info("✅ Scraping completed with NEW LOGIC. Found {} jobs matching criteria.", jobs.size());
             
@@ -197,10 +180,9 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
     }
     
     @Override
-    public List<Job> scrapeAndCreateJobs(List<String> jobFunctions, List<String> requiredTags) {
-        log.info("🚀 Starting job scraping and creation with NEW LOGIC for job functions: {} and tags: {}", 
-                jobFunctions, 
-                requiredTags);
+    public List<Job> scrapeAndCreateJobs(List<String> jobFunctions) {
+        log.info("🚀 Starting job scraping and creation with NEW LOGIC for job functions: {}", 
+                jobFunctions);
         
         WebDriver driver = null;
         try {
@@ -246,7 +228,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             
             // ✅ ОНОВЛЕНО: Використовуємо нову гібридну логіку для різних типів сторінок
             log.info("🔍 Applying NEW HYBRID LOGIC: 1) job functions → 2) Load More (ОДИН раз) → 3) нескінченна прокрутка → 4) URL → 5) префікс компанії → 6) збір тегів");
-            List<Job> jobs = scrapeJobsBasedOnPageType(driver, requiredTags, jobFunctions);
+            List<Job> jobs = scrapeJobsBasedOnPageType(driver, jobFunctions);
             
             log.info("🎯 Job scraping completed with NEW LOGIC. Created {} Job objects with real data", jobs.size());
             return jobs;
@@ -618,12 +600,10 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
      * - Потім автоматичне завантаження при прокрутці
      * - Адаптивне завершення коли контент більше не завантажується
      */
-    private List<Job> scrapeAllJobsWithImprovedLogic(WebDriver driver, List<String> requiredTags, List<String> jobFunctions) {
+    private List<Job> scrapeAllJobsWithImprovedLogic(WebDriver driver, List<String> jobFunctions) {
         log.info("🔍 Starting updated job scraping process with NEW LOGIC...");
         log.info("🔍 Job functions to filter by: {} (type: {})", jobFunctions, 
                 jobFunctions != null ? jobFunctions.getClass().getSimpleName() : "null");
-        log.info("🔍 Required tags to filter by: {} (type: {})", requiredTags, 
-                requiredTags != null ? requiredTags.getClass().getSimpleName() : "null");
         
         if (jobFunctions != null) {
             for (int i = 0; i < jobFunctions.size(); i++) {
@@ -656,7 +636,6 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             return jobs;
         }
         
-        int passedTagFilter = 0;
         int passedFunctionFilter = 0;
         int foundUrls = 0;
         int savedWithCompanyPrefix = 0;
@@ -729,17 +708,17 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         }
         
         // ✅ ОНОВЛЕНО: Розширений звіт з новою логікою
-        printUpdatedFinalReport(jobCards.size(), passedTagFilter, passedFunctionFilter, foundUrls, 
+        printUpdatedFinalReport(jobCards.size(), passedFunctionFilter, foundUrls, 
                                jobs.size(), savedWithCompanyPrefix, savedWithoutCompanyPrefix, jobFunctions);
         return jobs;
     }
 
     /**
      * ✅ ОНОВЛЕНИЙ МЕТОД: Визначає тип сторінки та застосовує відповідну логіку скрапінгу
-     * Всі методи тепер використовують нову гібридну логіку: 
+     * Всі методи тепер використовують нову гібридну логіку:
      * 1) job functions → 2) Load More (ОДИН раз) → 3) нескінченна прокрутка → 4) URL → 5) префікс компанії → 6) збір тегів
      */
-    private List<Job> scrapeJobsBasedOnPageType(WebDriver driver, List<String> requiredTags, List<String> jobFunctions) {
+        private List<Job> scrapeJobsBasedOnPageType(WebDriver driver, List<String> jobFunctions) {
         String currentUrl = driver.getCurrentUrl();
         log.info("🔍 Current URL: {}", currentUrl);
         
@@ -751,33 +730,33 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         } else if (currentUrl.contains("/companies/")) {
             // Сторінка компанії зі списком вакансій
             log.info("🏢 Detected company page, applying new filtering logic...");
-            return scrapeJobsFromCompanyPage(driver, requiredTags, jobFunctions);
+            return scrapeJobsFromCompanyPage(driver, jobFunctions);
             
         } else if (currentUrl.contains("/jobs")) {
             // Головна сторінка зі списком вакансій
             log.info("📋 Detected main jobs page, applying new filtering logic...");
-            return scrapeJobsFromMainPage(driver, requiredTags, jobFunctions);
+            return scrapeJobsFromMainPage(driver, jobFunctions);
             
         } else {
             // Невідома сторінка
             log.warn("⚠️ Unknown page type, trying default scraping with new logic...");
-            return scrapeJobsFromMainPage(driver, requiredTags, jobFunctions);
+            return scrapeJobsFromMainPage(driver, jobFunctions);
         }
     }
-    
+
     /**
      * ✅ ОНОВЛЕНИЙ МЕТОД: Скрапінг однієї вакансії з детальної сторінки з новою логікою
      */
     private List<Job> scrapeSingleJobFromDetailPage(WebDriver driver, List<String> jobFunctions) {
         List<Job> jobs = new ArrayList<>();
-        
+
         try {
             String currentUrl = driver.getCurrentUrl();
-            
+
             // ✅ КРОК 1: Перевіряємо, чи URL містить потрібний префікс компанії
             if (currentUrl.startsWith(REQUIRED_PREFIX)) {
                 log.info("🔍 Detail page: URL contains company prefix '{}', applying new logic", REQUIRED_PREFIX);
-                
+
                 // ✅ КРОК 1: Фільтрація за функціями (ПЕРШИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
                 if (jobFunctions != null && !jobFunctions.isEmpty()) {
                     // Шукаємо заголовок вакансії для перевірки функції
@@ -786,56 +765,56 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                         log.warn("⚠️ Could not extract position name from detail page");
                         return jobs;
                     }
-                    
+
                     String positionText = positionName.toLowerCase();
                     boolean hasRequiredFunction = jobFunctions.stream()
                         .anyMatch(function -> positionText.contains(function.toLowerCase()));
-                    
+
                     if (!hasRequiredFunction) {
                         log.info("🔍 Detail page: Position '{}' does not match required functions: {}", positionName, jobFunctions);
                         return jobs; // Не зберігаємо, якщо не відповідає функціям
                     }
                 }
-                
+
                 // ✅ КРОК 2: Збираємо всі дані та зберігаємо (всі проходять однакову обробку)
                 log.info("🔍 Detail page: All filters passed, saving job (tags will be collected)");
-                
+
                 // Шукаємо заголовок вакансії
                 String positionName = extractTitleFromDetailPage(driver);
                 if (positionName == null || positionName.trim().isEmpty()) {
                     log.warn("⚠️ Could not extract position name from detail page");
                     return jobs;
                 }
-                
+
                 // Шукаємо назву компанії
                 String companyName = extractCompanyNameFromDetailPage(driver);
-                
+
                 // Шукаємо теги
                 List<String> tags = extractTagsFromDetailPage(driver);
-                
+
                 // Шукаємо локацію
                 String location = extractLocationFromDetailPage(driver);
-                
+
                 // Шукаємо дату публікації
                 LocalDateTime postedDate = extractPostedDateFromDetailPage(driver);
-                
+
                 // ✅ ДОДАНО: Шукаємо опис вакансії
                 String description = extractDescriptionFromDetailPage(driver);
-                
+
                 // ✅ ДОДАНО: Додаткова перевірка, щоб не зберігати назву вакансії як опис
                 if (description != null && description.equals(positionName)) {
                     log.debug("📝 Skipping description as it matches position name: '{}'", description);
                     description = null;
                 }
-                
+
                 // Створюємо Job об'єкт
                 Job job = jobCreationService.createJobWithAllData(
                     currentUrl, positionName, companyName, null, location, tags, postedDate, jobFunctions, description
                 );
-                
+
                 if (job != null) {
                     // ✅ ДОДАНО: Зберігаємо опис вакансії через DescriptionIngestService (тільки якщо це не заглушка)
-                    if (description != null && !description.trim().isEmpty() && 
+                    if (description != null && !description.trim().isEmpty() &&
                         !description.equals("Job scraped from Techstars")) {
                         try {
                             boolean descriptionSaved = descriptionIngestService.saveDescription(job, description);
@@ -845,80 +824,80 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                                 log.warn("⚠️ Failed to save description for job ID: {}", job.getId());
                             }
                         } catch (Exception e) {
-                            log.error("❌ Error saving description for job ID: {}, error: {}", 
+                            log.error("❌ Error saving description for job ID: {}, error: {}",
                                     job.getId(), e.getMessage(), e);
                         }
                     }
-                    
+
                     jobs.add(job);
                     log.info("✅ Successfully scraped job: {}", positionName);
                 }
-                
+
             } else {
                 // URL не містить префікс компанії - застосовуємо стандартну логіку
                 log.info("🔍 Detail page: URL does not contain company prefix, applying standard filtering");
-                
+
                 // Шукаємо заголовок вакансії
                 String positionName = extractTitleFromDetailPage(driver);
                 if (positionName == null || positionName.trim().isEmpty()) {
                     log.warn("⚠️ Could not extract position name from detail page");
                     return jobs;
                 }
-                
+
                 // ✅ КРОК 2: Фільтрація за функціями (ПЕРШИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
                 if (jobFunctions != null && !jobFunctions.isEmpty()) {
                     String positionText = positionName.toLowerCase();
                     boolean hasRequiredFunction = jobFunctions.stream()
                         .anyMatch(function -> positionText.contains(function.toLowerCase()));
-                    
+
                     if (!hasRequiredFunction) {
                         log.info("🔍 Detail page: Position '{}' does not match required functions: {}", positionName, jobFunctions);
                         return jobs; // Не зберігаємо, якщо не відповідає функціям
                     }
                 }
-                
+
                 // ✅ КРОК 3: Збираємо всі дані та зберігаємо
                 log.info("🔍 Detail page: All filters passed, saving job with standard filtering (tags will be collected)");
-                
+
                 // Шукаємо назву компанії
                 String companyName = extractCompanyNameFromDetailPage(driver);
-                
+
                 // Шукаємо теги
                 List<String> tags = extractTagsFromDetailPage(driver);
-                
+
                 // Шукаємо локацію
                 String location = extractLocationFromDetailPage(driver);
-                
+
                 // Шукаємо дату публікації
                 LocalDateTime postedDate = extractPostedDateFromDetailPage(driver);
-                
+
                 // ✅ ДОДАНО: Шукаємо опис вакансії
                 String description = extractDescriptionFromDetailPage(driver);
-                
+
                 // Створюємо Job об'єкт
                 Job job = jobCreationService.createJobWithAllData(
                     currentUrl, positionName, companyName, null, location, tags, postedDate, jobFunctions, description
                 );
-                
+
                 if (job != null) {
                     jobs.add(job);
                     log.info("✅ Successfully scraped job with standard filtering: {}", positionName);
                 }
             }
-            
+
         } catch (Exception e) {
             log.error("❌ Error scraping job from detail page: {}", e.getMessage());
         }
-        
+
         return jobs;
     }
-    
+
     /**
      * ✅ ОНОВЛЕНИЙ МЕТОД: Скрапінг вакансій зі сторінки компанії з новою гібридною логікою
      * НЕ ПЕРЕВІРЯЄМО теги для URL з префіксом компанії
      * Використовує: 1) job functions → 2) URL → 3) префікс компанії → 4) збір тегів
      */
-    private List<Job> scrapeJobsFromCompanyPage(WebDriver driver, List<String> requiredTags, List<String> jobFunctions) {
+    private List<Job> scrapeJobsFromCompanyPage(WebDriver driver, List<String> jobFunctions) {
         List<Job> jobs = new ArrayList<>();
         
         try {
@@ -962,9 +941,9 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
      * Використовує нову гібридну логіку: 
      * 1) job functions → 2) Load More (ОДИН раз) → 3) нескінченна прокрутка → 4) URL → 5) префікс компанії → 6) збір тегів
      */
-    private List<Job> scrapeJobsFromMainPage(WebDriver driver, List<String> requiredTags, List<String> jobFunctions) {
+    private List<Job> scrapeJobsFromMainPage(WebDriver driver, List<String> jobFunctions) {
         // Використовуємо оновлену логіку з новим порядком фільтрації
-        return scrapeAllJobsWithImprovedLogic(driver, requiredTags, jobFunctions);
+        return scrapeAllJobsWithImprovedLogic(driver, jobFunctions);
     }
 
     /**
@@ -1240,55 +1219,8 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         }
     }
 
-    private String getElementText(WebElement root, String selector) {
-        try {
-            log.debug("🔍 Searching for element with selector: '{}'", selector);
-            WebElement element = root.findElement(By.cssSelector(selector));
-            String text = element.getText();
-            log.debug("🔍 Found element with selector '{}', text: '{}'", selector, text);
-            return text;
-        } catch (Exception e) {
-            log.debug("⚠️ Element not found with selector '{}': {}", selector, e.getMessage());
-            return null;
-        }
-    }
 
-    private void printFinalReport(int totalCards, int passedTagFilter, int passedFunctionFilter, 
-                                int foundUrls, int finalJobs, List<String> functions) {
-        log.info("📊 ЗВІТ ПРО ФІЛЬТРАЦІЮ:");
-        log.info("   • Всього карток: {}", totalCards);
-        log.info("   • Пройшли фільтр тегів: {}", passedTagFilter);
-        log.info("   • Пройшли фільтр функцій: {}", passedFunctionFilter);
-        log.info("   • Знайдено URL: {}", foundUrls);
-        log.info("   • Фінальних вакансій: {}", finalJobs);
-        
-        if (totalCards > 0) {
-            log.info("   • Ефективність фільтрації тегів: {:.1f}%", (double) passedTagFilter / totalCards * 100);
-            log.info("   • Ефективність фільтрації функцій: {:.1f}%", (double) passedFunctionFilter / totalCards * 100);
-        }
-        if (passedFunctionFilter > 0) {
-            log.info("   • Конверсія в URL: {:.1f}%", (double) foundUrls / passedFunctionFilter * 100);
-        }
-        if (foundUrls > 0) {
-            log.info("   • Конверсія в фінальні вакансії: {:.1f}%", (double) finalJobs / foundUrls * 100);
-        }
-        log.info("   • Застосовані функції: {}", functions);
-        
-        if (passedFunctionFilter > 0 && foundUrls == 0) {
-            log.error("❌ КРИТИЧНА ПОМИЛКА: Всі {} відфільтрованих карток не дали URL!", passedFunctionFilter);
-        }
-        
-        if (foundUrls > 0 && finalJobs == 0) {
-            log.error("❌ КРИТИЧНА ПОМИЛКА: Всі {} знайдених URL не пройшли фінальну перевірку!", foundUrls);
-        }
-        
-        log.info("🎯 Результат: {} з {} карток успішно оброблено", finalJobs, totalCards);
-    }
-
-    /**
-     * ✅ НОВИЙ МЕТОД: Розширений звіт з новою логікою фільтрації
-     */
-    private void printUpdatedFinalReport(int totalCards, int passedTagFilter, int passedFunctionFilter, 
+    private void printUpdatedFinalReport(int totalCards, int passedFunctionFilter,
                                        int foundUrls, int finalJobs, int savedWithCompanyPrefix, 
                                        int savedWithoutCompanyPrefix, List<String> functions) {
         log.info("📊 ОНОВЛЕНИЙ ЗВІТ ПРО ФІЛЬТРАЦІЮ (НОВА ЛОГІКА):");
@@ -1338,297 +1270,6 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         }
     }
 
-    /**
-     * ✅ НОВИЙ МЕТОД: Витягує теги з картки вакансії
-     */
-
-
-
-
-
-
-
-
-
-
-    /**
-     * ✅ НОВИЙ МЕТОД: Витягує атрибут з елемента
-     */
-    private String getElementAttribute(WebElement root, String selector, String attribute) {
-        try {
-            log.debug("🔍 Searching for element with selector: '{}' and attribute: '{}'", selector, attribute);
-            WebElement element = root.findElement(By.cssSelector(selector));
-            String value = element.getAttribute(attribute);
-            log.debug("🔍 Found element with selector '{}', {}: '{}'", selector, attribute, value);
-            return value;
-        } catch (Exception e) {
-            log.debug("⚠️ Element not found with selector '{}': {}", selector, e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * ✅ НОВИЙ МЕТОД: Витягує назву компанії з картки вакансії
-     */
-    private String extractCompanyNameFromCard(WebElement card, String jobPageUrl) {
-        log.debug("🔍 Starting company name extraction...");
-        
-        // ✅ Стратегія 1: Шукаємо в звичайних елементах
-        String organizationTitle = getElementText(card, ScrapingSelectors.ORG_NAME[0]);
-        log.debug("🔍 Strategy 1 - ORG_NAME selector result: '{}'", organizationTitle);
-        
-        if (organizationTitle != null && !organizationTitle.trim().isEmpty()) {
-            return organizationTitle.trim();
-        }
-        
-        // ✅ Стратегія 2: Шукаємо в meta тегах з itemprop="name"
-        try {
-            log.debug("🔍 Strategy 2 - Searching for meta[itemprop='name']...");
-            List<WebElement> metaElements = card.findElements(By.cssSelector("meta[itemprop='name']"));
-            log.debug("🔍 Found {} meta[itemprop='name'] elements", metaElements.size());
-            
-            for (WebElement metaElement : metaElements) {
-                String content = metaElement.getAttribute("content");
-                log.debug("🔍 Meta element content: '{}'", content);
-                if (content != null && !content.trim().isEmpty()) {
-                    log.info("🏢 Found company name in meta[itemprop='name']: '{}'", content.trim());
-                    return content.trim();
-                }
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Strategy 2 failed: {}", e.getMessage());
-        }
-        
-        // ✅ Стратегія 3: Шукаємо в звичайних елементах з itemprop="name"
-        try {
-            log.debug("🔍 Strategy 3 - Searching for [itemprop='name']...");
-            List<WebElement> nameElements = card.findElements(By.cssSelector("[itemprop='name']"));
-            log.debug("🔍 Found {} [itemprop='name'] elements", nameElements.size());
-            
-            for (WebElement nameElement : nameElements) {
-                String content = nameElement.getAttribute("content");
-                String text = nameElement.getText();
-                log.debug("🔍 Name element - content: '{}', text: '{}'", content, text);
-                
-                if (content != null && !content.trim().isEmpty()) {
-                    log.info("🏢 Found company name in [itemprop='name'] content: '{}'", content.trim());
-                    return content.trim();
-                }
-                if (text != null && !text.trim().isEmpty()) {
-                    log.info("🏢 Found company name in [itemprop='name'] text: '{}'", text.trim());
-                    return text.trim();
-                }
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Strategy 3 failed: {}", e.getMessage());
-        }
-        
-        // ✅ Стратегія 4: Шукаємо в батьківських елементах з itemprop="hiringOrganization"
-        try {
-            log.debug("🔍 Strategy 4 - Searching in parent elements for hiringOrganization...");
-            WebElement parent = card.findElement(By.xpath("ancestor::div[@itemprop='hiringOrganization']"));
-            if (parent != null) {
-                log.debug("🔍 Found parent with hiringOrganization");
-                
-                // Шукаємо meta[itemprop='name'] в батьківському елементі
-                List<WebElement> parentMetaElements = parent.findElements(By.cssSelector("meta[itemprop='name']"));
-                log.debug("🔍 Found {} meta[itemprop='name'] in parent", parentMetaElements.size());
-                
-                for (WebElement metaElement : parentMetaElements) {
-                    String content = metaElement.getAttribute("content");
-                    log.debug("🔍 Parent meta element content: '{}'", content);
-                    if (content != null && !content.trim().isEmpty()) {
-                        log.info("🏢 Found company name in parent meta[itemprop='name']: '{}'", content.trim());
-                        return content.trim();
-                    }
-                }
-                
-                // Шукаємо [itemprop='name'] в батьківському елементі
-                List<WebElement> parentNameElements = parent.findElements(By.cssSelector("[itemprop='name']"));
-                log.debug("🔍 Found {} [itemprop='name'] in parent", parentNameElements.size());
-                
-                for (WebElement nameElement : parentNameElements) {
-                    String content = nameElement.getAttribute("content");
-                    String text = nameElement.getText();
-                    log.debug("🔍 Parent name element - content: '{}', text: '{}'", content, text);
-                    
-                    if (content != null && !content.trim().isEmpty()) {
-                        log.info(" Found company name in parent [itemprop='name'] content: '{}'", content.trim());
-                        return content.trim();
-                    }
-                    if (text != null && !text.trim().isEmpty()) {
-                        log.info("🏢 Found company name in parent [itemprop='name'] text: '{}'", text.trim());
-                        return text.trim();
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Strategy 4 failed: {}", e.getMessage());
-        }
-        
-        // ✅ Стратегія 5: Шукаємо за data-testid="organization-name"
-        try {
-            log.debug("🔍 Strategy 5 - Searching for data-testid='organization-name'...");
-            WebElement orgElement = card.findElement(By.cssSelector("[data-testid='organization-name']"));
-            String text = orgElement.getText();
-            log.debug("🔍 data-testid='organization-name' text: '{}'", text);
-            
-            if (text != null && !text.trim().isEmpty()) {
-                log.info("🏢 Found company name in data-testid='organization-name': '{}'", text.trim());
-                return text.trim();
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Strategy 5 failed: {}", e.getMessage());
-        }
-        
-        // ✅ Стратегія 6: Шукаємо в посиланнях на компанії
-        try {
-            log.debug("🔍 Strategy 6 - Searching for company links...");
-            List<WebElement> companyLinks = card.findElements(By.cssSelector("a[href*='/companies/']"));
-            log.debug("🔍 Found {} company links", companyLinks.size());
-            
-            for (WebElement companyLink : companyLinks) {
-                String text = companyLink.getText();
-                log.debug("🔍 Company link text: '{}'", text);
-                
-                if (text != null && !text.trim().isEmpty()) {
-                    log.info("🏢 Found company name in company link: '{}'", text.trim());
-                    return text.trim();
-                }
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Strategy 6 failed: {}", e.getMessage());
-        }
-        
-        // ✅ Стратегія 7: Fallback - витягуємо з URL
-        try {
-            log.debug("🔍 Strategy 7 - Extracting from URL...");
-            // URL: https://jobs.techstars.com/companies/artera-2-45603da9-8558-41e0-8432-f493987a2c76
-            String[] urlParts = jobPageUrl.split("/companies/");
-            if (urlParts.length > 1) {
-                String companyPart = urlParts[1].split("/")[0]; // artera-2-45603da9-8558-41e0-8432-f493987a2c76
-                log.debug("🔍 Company part from URL: '{}'", companyPart);
-                
-                // Прибираємо UUID та замінюємо дефіси на пробіли
-                String companyName = companyPart.replaceAll("-\\d{1,2}-[a-f0-9-]+$", ""); // artera-2
-                companyName = companyName.replaceAll("-\\d+$", ""); // artera
-                companyName = companyName.replace("-", " "); // artera -> artera
-                
-                // Капіталізуємо першу літеру
-                if (!companyName.isEmpty()) {
-                    String result = companyName.substring(0, 1).toUpperCase() + companyName.substring(1);
-                    log.info("🏢 Extracted company name from URL: '{}'", result);
-                    return result;
-                }
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Strategy 7 failed: {}", e.getMessage());
-        }
-        
-        log.warn("⚠️ All strategies failed to find company name");
-        return "Unknown Company";
-    }
-
-    /**
-     * ✅ НОВИЙ МЕТОД: Витягує назву позиції з картки вакансії
-     */
-    private String extractTitleFromCard(WebElement card) {
-        log.debug("🔍 Starting title extraction...");
-        
-        // ✅ Стратегія 1: Шукаємо за звичайними селекторами
-        String title = getElementText(card, ScrapingSelectors.JOB_TITLE[0]);
-        log.debug("🔍 Strategy 1 - JOB_TITLE selector result: '{}'", title);
-        
-        if (title != null && !title.trim().isEmpty()) {
-            log.info("💼 Found title using JOB_TITLE selector: '{}'", title.trim());
-            return title.trim();
-        }
-        
-        // ✅ Стратегія 2: Шукаємо за data-testid="job-title"
-        try {
-            log.debug("🔍 Strategy 2 - Searching for data-testid='job-title'...");
-            WebElement titleElement = card.findElement(By.cssSelector("[data-testid='job-title']"));
-            String text = titleElement.getText();
-            log.debug("🔍 data-testid='job-title' text: '{}'", text);
-            
-            if (text != null && !text.trim().isEmpty()) {
-                log.info("💼 Found title using data-testid='job-title': '{}'", text.trim());
-                return text.trim();
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Strategy 2 failed: {}", e.getMessage());
-        }
-        
-        // ✅ Стратегія 3: Шукаємо за itemprop="title"
-        try {
-            log.debug("🔍 Strategy 3 - Searching for [itemprop='title']...");
-            List<WebElement> titleElements = card.findElements(By.cssSelector("[itemprop='title']"));
-            log.debug("🔍 Found {} [itemprop='title'] elements", titleElements.size());
-            
-            for (WebElement titleElement : titleElements) {
-                String content = titleElement.getAttribute("content");
-                String text = titleElement.getText();
-                log.debug("🔍 Title element - content: '{}', text: '{}'", content, text);
-                
-                if (content != null && !content.trim().isEmpty()) {
-                    log.info("💼 Found title using [itemprop='title'] content: '{}'", content.trim());
-                    return content.trim();
-                }
-                if (text != null && !text.trim().isEmpty()) {
-                    log.info("💼 Found title using [itemprop='title'] text: '{}'", text.trim());
-                    return text.trim();
-                }
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Strategy 3 failed: {}", e.getMessage());
-        }
-        
-        // ✅ Стратегія 4: Шукаємо в заголовках (h1, h2, h3)
-        try {
-            log.debug("🔍 Strategy 4 - Searching for headings...");
-            List<WebElement> headings = card.findElements(By.cssSelector("h1, h2, h3, h4, h5, h6"));
-            log.debug("🔍 Found {} heading elements", headings.size());
-            
-            for (WebElement heading : headings) {
-                String text = heading.getText();
-                log.debug("🔍 Heading text: '{}'", text);
-                
-                if (text != null && !text.trim().isEmpty() && text.length() > 3) {
-                    log.info("💼 Found title in heading: '{}'", text.trim());
-                    return text.trim();
-                }
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Strategy 4 failed: {}", e.getMessage());
-        }
-        
-        // ✅ Стратегія 5: Шукаємо в посиланнях з текстом що може бути назвою позиції
-        try {
-            log.debug("🔍 Strategy 5 - Searching for links that might contain title...");
-            List<WebElement> links = card.findElements(By.cssSelector("a[href]"));
-            log.debug("🔍 Found {} links", links.size());
-            
-            for (WebElement link : links) {
-                String text = link.getText();
-                String href = link.getAttribute("href");
-                log.debug("🔍 Link - text: '{}', href: '{}'", text, href);
-                
-                // Перевіряємо чи посилання містить /jobs/ (може бути назва позиції)
-                if (text != null && !text.trim().isEmpty() && 
-                    href != null && href.contains("/jobs/") && 
-                    text.length() > 3 && text.length() < 100) {
-                    log.info("💼 Found title in job link: '{}'", text.trim());
-                    return text.trim();
-                }
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Strategy 5 failed: {}", e.getMessage());
-        }
-        
-        log.warn("⚠️ All strategies failed to find title");
-        return "Unknown Position";
-    }
-
 
 
     /**
@@ -1651,7 +1292,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         }
         return null;
     }
-    
+
     /**
      * ✅ НОВИЙ МЕТОД: Екстракція назви компанії з детальної сторінки
      */
@@ -1672,7 +1313,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         }
         return null;
     }
-    
+
     /**
      * ✅ НОВИЙ МЕТОД: Екстракція тегів з детальної сторінки
      */
@@ -1699,7 +1340,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         }
         return tags;
     }
-    
+
     /**
      * ✅ НОВИЙ МЕТОД: Екстракція локації з детальної сторінки
      */
@@ -1714,7 +1355,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                     return location.trim();
                 }
             }
-            
+
             // Потім шукаємо в div елементах
             for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
                 if (selector.contains("sc-beqWaB")) {
@@ -1733,7 +1374,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         }
         return null;
     }
-    
+
     /**
      * ✅ НОВИЙ МЕТОД: Екстракція дати публікації з детальної сторінки
      */
@@ -1791,129 +1432,6 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         return jobCards;
     }
 
-    /**
-     * ✅ НОВИЙ МЕТОД: Витягує опис вакансії з картки вакансії
-     */
-    private String extractDescriptionFromCard(WebElement card) {
-        try {
-            // ✅ Шукаємо опис за селекторами з ScrapingSelectors (найточніші)
-            for (String selector : ScrapingSelectors.DESCRIPTION) {
-                try {
-                    List<WebElement> elements = card.findElements(By.cssSelector(selector));
-                    for (WebElement element : elements) {
-                        String text = element.getText();
-                        String content = element.getAttribute("content");
-                        
-                        // Перевіряємо content атрибут
-                        if (content != null && !content.trim().isEmpty() && content.length() < 500) {
-                            // ✅ ВИПРАВЛЕНО: Перевіряємо, чи це не назва вакансії
-                            if (!content.contains(" at ") && !content.contains(" - ") && 
-                                !content.contains("UX Designer") && !content.contains("Software Engineer")) {
-                                log.debug("📝 Found description using selector '{}' content: '{}'", selector, content);
-                                return content.trim();
-                            }
-                        }
-                        
-                        // Перевіряємо текст елемента
-                        if (text != null && !text.trim().isEmpty() && text.length() < 500) {
-                            // ✅ ВИПРАВЛЕНО: Перевіряємо, чи це не назва вакансії
-                            if (!text.contains(" at ") && !text.contains(" - ") && 
-                                !text.contains("UX Designer") && !text.contains("Software Engineer")) {
-                                log.debug("📝 Found description using selector '{}' text: '{}'", selector, text);
-                                return text.trim();
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    log.debug("⚠️ Selector '{}' failed: {}", selector, e.getMessage());
-                }
-            }
-            
-            // ✅ Шукаємо короткий опис в meta тегах
-            List<WebElement> metaElements = card.findElements(By.cssSelector("meta[itemprop='description']"));
-            if (!metaElements.isEmpty()) {
-                String description = metaElements.get(0).getAttribute("content");
-                if (description != null && !description.trim().isEmpty()) {
-                    // ✅ ВИПРАВЛЕНО: Перевіряємо, чи це не назва вакансії
-                    if (!description.contains(" at ") && !description.contains(" - ") && description.length() < 200) {
-                        log.debug("📝 Found description in meta[itemprop='description']: '{}'", description);
-                        return description.trim();
-                    }
-                }
-            }
-            
-            // ✅ Шукаємо в div з класом job-info (найбільш ймовірне місце для опису)
-            List<WebElement> jobInfoElements = card.findElements(By.cssSelector("div[class*='job-info']"));
-            for (WebElement jobInfo : jobInfoElements) {
-                // Шукаємо в дочірніх елементах з описом
-                List<WebElement> descElements = jobInfo.findElements(By.cssSelector("[data-testid*='description'], [data-testid*='about'], [data-testid*='summary']"));
-                for (WebElement descElement : descElements) {
-                    String text = descElement.getText();
-                    if (text != null && !text.trim().isEmpty() && text.length() < 500) {
-                        // ✅ ВИПРАВЛЕНО: Перевіряємо, чи це не назва вакансії
-                        if (!text.contains(" at ") && !text.contains(" - ") && 
-                            !text.contains("UX Designer") && !text.contains("Software Engineer")) {
-                            log.debug("📝 Found description in job-info element: '{}'", text);
-                            return text.trim();
-                        }
-                    }
-                }
-            }
-            
-            // ✅ ДОДАНО: Шукаємо в div з класом sc-beqWaB sc-gueYoa lpllVF MYFxR (на основі наданої HTML структури)
-            List<WebElement> scElements = card.findElements(By.cssSelector("div.sc-beqWaB.sc-gueYoa.lpllVF.MYFxR"));
-            for (WebElement scElement : scElements) {
-                // Шукаємо в дочірніх елементах з описом
-                List<WebElement> descElements = scElement.findElements(By.cssSelector("[data-testid*='description'], [data-testid*='about'], [data-testid*='summary']"));
-                for (WebElement descElement : descElements) {
-                    String text = descElement.getText();
-                    if (text != null && !text.trim().isEmpty() && text.length() < 500) {
-                        // ✅ ВИПРАВЛЕНО: Перевіряємо, чи це не назва вакансії
-                        if (!text.contains(" at ") && !text.contains(" - ") && 
-                            !text.contains("UX Designer") && !text.contains("Software Engineer")) {
-                            log.debug("📝 Found description in sc-beqWaB element: '{}'", text);
-                            return text.trim();
-                        }
-                    }
-                }
-                
-                // Шукаємо в тексті самого елемента, якщо він містить опис
-                String scText = scElement.getText();
-                if (scText != null && !scText.trim().isEmpty() && scText.length() > 50 && scText.length() < 500) {
-                    // ✅ ВИПРАВЛЕНО: Перевіряємо, чи це не назва вакансії
-                    if (!scText.contains(" at ") && !scText.contains(" - ") && 
-                        !scText.contains("UX Designer") && !scText.contains("Software Engineer") &&
-                        !scText.contains("Chief of Staff")) {
-                        log.debug("📝 Found description in sc-beqWaB text: '{}'", scText);
-                        return scText.trim();
-                    }
-                }
-            }
-            
-            // ✅ Шукаємо короткий опис в тегах (найбезпечніший fallback варіант)
-            List<WebElement> tagElements = card.findElements(By.cssSelector("[data-testid='tag']"));
-            if (!tagElements.isEmpty()) {
-                List<String> tags = new ArrayList<>();
-                for (WebElement tag : tagElements) {
-                    String tagText = tag.getText();
-                    if (tagText != null && !tagText.trim().isEmpty()) {
-                        tags.add(tagText.trim());
-                    }
-                }
-                if (!tags.isEmpty()) {
-                    String tagsDescription = String.join(", ", tags);
-                    log.debug("📝 Using tags as fallback description: '{}'", tagsDescription);
-                    return tagsDescription;
-                }
-            }
-            
-        } catch (Exception e) {
-            log.debug("⚠️ Error extracting description from card: {}", e.getMessage());
-        }
-        
-        log.debug("📝 No valid description found in card, will try to get from detail page later");
-        return null;
-    }
 
     /**
      * ✅ НОВИЙ МЕТОД: Витягує опис вакансії з детальної сторінки
@@ -1930,7 +1448,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                     return description.trim();
                 }
             }
-            
+
             // ✅ Шукаємо опис в div з класом sc-beqWaB fmCCHr
             List<WebElement> descriptionElements = driver.findElements(By.cssSelector("div.sc-beqWaB.fmCCHr"));
             if (!descriptionElements.isEmpty()) {
@@ -1941,7 +1459,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                     return description.trim();
                 }
             }
-            
+
             // ✅ Шукаємо опис за селекторами з ScrapingSelectors
             for (String selector : ScrapingSelectors.DESCRIPTION) {
                 try {
@@ -1957,7 +1475,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                     log.debug("⚠️ Error with selector '{}': {}", selector, e.getMessage());
                 }
             }
-            
+
             // ✅ Шукаємо опис в всіх div елементах з класом sc-beqWaB
             List<WebElement> allScElements = driver.findElements(By.cssSelector("div[class*='sc-beqWaB']"));
             for (WebElement element : allScElements) {
@@ -1970,11 +1488,11 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                     }
                 }
             }
-            
+
         } catch (Exception e) {
             log.warn("⚠️ Error extracting description from detail page: {}", e.getMessage());
         }
-        
+
         log.info("📝 No description found on detail page");
         return null;
     }

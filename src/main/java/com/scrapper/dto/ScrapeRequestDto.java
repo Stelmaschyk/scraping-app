@@ -16,5 +16,4 @@ import java.util.List;
 public class ScrapeRequestDto {
     @NotEmpty(message = "Job functions cannot be empty")
     private List<@NotBlank(message = "Job function cannot be blank") String> jobFunctions;
-    private List<String> tags;
 }
