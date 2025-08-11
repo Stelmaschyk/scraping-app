@@ -29,6 +29,7 @@ import com.scrapper.service.criteriaServices.PostedDateIngestService;
 import com.scrapper.service.criteriaServices.LogoIngestService;
 import com.scrapper.service.criteriaServices.TitleIngestService;
 import com.scrapper.service.criteriaServices.DescriptionIngestService;
+import com.scrapper.service.criteriaServices.DataExtractionService;
 import com.scrapper.validation.Validation;
 import com.scrapper.service.criteriaServices.DateParsingService;
 
@@ -96,6 +97,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
     private final DescriptionIngestService descriptionIngestService;
     private final JobCreationService jobCreationService;
     private final DateParsingService dateParsingService;
+    private final DataExtractionService dataExtractionService;
 
     private WebDriver initializeWebDriver() {
         WebDriverManager.chromedriver().setup();
@@ -1188,20 +1190,14 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         try {
             log.debug("🔍 Creating Job object for URL: {}", jobPageUrl);
             
-            // ✅ ВИПРАВЛЕНО: Використовуємо новий метод для витягування назви компанії
-            String organizationTitle = extractCompanyNameFromCard(card, jobPageUrl);
-            
-            // ✅ ДОДАНО: Шукаємо назву позиції
-            String positionName = extractTitleFromCard(card);
-            
-            // ✅ ДОДАНО: Витягуємо додаткову інформацію
-            List<String> tags = extractTagsFromCard(card);
-            String location = extractLocationFromCard(card);
-            LocalDateTime postedDate = extractPostedDateFromCard(card);
-            String logoUrl = extractLogoUrlFromCard(card);
-            
-            // ✅ ДОДАНО: Витягуємо опис вакансії
-            String description = extractDescriptionFromCard(card);
+            // ✅ ВИПРАВЛЕНО: Використовуємо DataExtractionService для витягування всіх даних
+            String organizationTitle = dataExtractionService.extractCompanyName(card);
+            String positionName = dataExtractionService.extractTitle(card);
+            List<String> tags = dataExtractionService.extractTags(card);
+            String location = dataExtractionService.extractLocation(card);
+            LocalDateTime postedDate = dataExtractionService.extractPostedDate(card);
+            String logoUrl = dataExtractionService.extractLogoUrl(card);
+            String description = dataExtractionService.extractDescription(card);
             
             String defaultFunction = jobFunctions.isEmpty() ? 
                     "Software Engineering" : jobFunctions.get(0);
@@ -1345,129 +1341,15 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
     /**
      * ✅ НОВИЙ МЕТОД: Витягує теги з картки вакансії
      */
-    private List<String> extractTagsFromCard(WebElement card) {
-        List<String> tags = new ArrayList<>();
-        try {
-            // Шукаємо всі елементи з data-testid="tag"
-            List<WebElement> tagElements = card.findElements(By.cssSelector("[data-testid='tag']"));
-            
-            for (WebElement tagElement : tagElements) {
-                try {
-                    String tagText = tagElement.getText().trim();
-                    if (!tagText.isEmpty()) {
-                        tags.add(tagText);
-                        log.debug("🏷️ Found tag: '{}'", tagText);
-                    }
-                } catch (Exception e) {
-                    log.debug("⚠️ Error extracting tag text: {}", e.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Error searching for tags: {}", e.getMessage());
-        }
-        
-        log.debug("🏷️ Extracted {} tags from card", tags.size());
-        return tags;
-    }
-
-    /**
-     * ✅ НОВИЙ МЕТОД: Витягує локацію з картки вакансії
-     */
-    private String extractLocationFromCard(WebElement card) {
-        try {
-            // Спочатку шукаємо в meta тегах
-            List<WebElement> metaElements = card.findElements(By.cssSelector("meta[itemprop='address']"));
-            if (!metaElements.isEmpty()) {
-                String location = metaElements.get(0).getAttribute("content");
-                if (location != null && !location.trim().isEmpty()) {
-                    log.debug("📍 Found location in meta: '{}'", location);
-                    return location.trim();
-                }
-            }
-            
-            // Якщо meta не знайдено, шукаємо в звичайних елементах
-            String location = getElementText(card, ScrapingSelectors.LOCATION[0]);
-            if (location != null && !location.trim().isEmpty()) {
-                log.debug("📍 Found location in element: '{}'", location);
-                return location.trim();
-            }
-            
-        } catch (Exception e) {
-            log.debug("⚠️ Error extracting location: {}", e.getMessage());
-        }
-        
-        log.debug("📍 No location found in card");
-        return null;
-    }
-
-    /**
-     * ✅ НОВИЙ МЕТОД: Витягує дату публікації з картки вакансії
-     */
-    private LocalDateTime extractPostedDateFromCard(WebElement card) {
-        try {
-            // ✅ ВИПРАВЛЕНО: Спочатку шукаємо в meta тегах
-            List<WebElement> metaElements = card.findElements(By.cssSelector("meta[itemprop='datePosted']"));
-            if (!metaElements.isEmpty()) {
-                String dateStr = metaElements.get(0).getAttribute("content");
-                if (dateStr != null && !dateStr.trim().isEmpty()) {
-                    // ✅ ВИПРАВЛЕНО: Використовуємо DateParsingService для парсингу дати з meta тегу
-                    LocalDateTime date = dateParsingService.parseMetaDate(dateStr);
-                    if (date != null) {
-                        log.info("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})", 
-                                dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
-                        return date;
-                    }
-                }
-            }
-            
-
-            
-        } catch (Exception e) {
-            log.debug("⚠️ Error extracting posted date: {}", e.getMessage());
-        }
-        
-        log.debug("📅 No posted date found in card, using current date");
-        LocalDateTime currentDate = LocalDateTime.now();
-        log.debug("📅 Using current date: {} (Unix: {})", currentDate, currentDate.toEpochSecond(java.time.ZoneOffset.UTC));
-        return currentDate;
-    }
 
 
 
-    /**
-     * ✅ НОВИЙ МЕТОД: Витягує URL логотипу з картки вакансії
-     */
-    private String extractLogoUrlFromCard(WebElement card) {
-        try {
-            // Шукаємо зображення з data-testid="image"
-            List<WebElement> imageElements = card.findElements(By.cssSelector("img[data-testid='image']"));
-            
-            for (WebElement imageElement : imageElements) {
-                try {
-                    String src = imageElement.getAttribute("src");
-                    if (src != null && !src.trim().isEmpty()) {
-                        log.debug("🖼️ Found logo image with src: '{}'", src);
-                        return src.trim();
-                    }
-                } catch (Exception e) {
-                    log.debug("⚠️ Error extracting image src: {}", e.getMessage());
-                }
-            }
-            
-            // Якщо не знайдено за data-testid="image", шукаємо за іншими селекторами
-            String logoUrl = getElementAttribute(card, ScrapingSelectors.ORG_LOGO[0], "src");
-            if (logoUrl != null && !logoUrl.trim().isEmpty()) {
-                log.debug("🖼️ Found logo using ORG_LOGO selector: '{}'", logoUrl);
-                return logoUrl.trim();
-            }
-            
-        } catch (Exception e) {
-            log.debug("⚠️ Error searching for logo: {}", e.getMessage());
-        }
-        
-        log.debug("🖼️ No logo found in card");
-        return null;
-    }
+
+
+
+
+
+
 
     /**
      * ✅ НОВИЙ МЕТОД: Витягує атрибут з елемента

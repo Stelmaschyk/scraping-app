@@ -23,6 +23,8 @@ import java.util.List;
 @Slf4j
 public class DataExtractionServiceImpl implements DataExtractionService {
 
+    private final DateParsingService dateParsingService;
+
     // ✅ УТИЛІТНІ МЕТОДИ ДЛЯ РОБОТИ З ЕЛЕМЕНТАМИ
     
     /**
@@ -210,18 +212,12 @@ public class DataExtractionServiceImpl implements DataExtractionService {
             if (!metaElements.isEmpty()) {
                 String dateStr = metaElements.get(0).getAttribute("content");
                 if (dateStr != null && !dateStr.trim().isEmpty()) {
-                    try {
-                        // Парсимо дату формату YYYY-MM-DD
-                        if (dateStr.matches("\\d{4}-\\d{2}-\\d{2}")) {
-                            LocalDateTime date = LocalDateTime.parse(dateStr.trim() + "T00:00:00");
-                            log.info("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})", 
-                                    dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
-                            return date;
-                        } else {
-                            log.debug("⚠️ Date format not supported: '{}' (expected YYYY-MM-DD)", dateStr);
-                        }
-                    } catch (Exception e) {
-                        log.debug("⚠️ Could not parse date from meta: '{}', error: {}", dateStr, e.getMessage());
+                    // ✅ ВИПРАВЛЕНО: Використовуємо DateParsingService для парсингу дати
+                    LocalDateTime date = dateParsingService.parseMetaDate(dateStr);
+                    if (date != null) {
+                        log.info("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})", 
+                                dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
+                        return date;
                     }
                 }
             }
@@ -242,18 +238,12 @@ public class DataExtractionServiceImpl implements DataExtractionService {
             if (!metaElements.isEmpty()) {
                 String dateStr = metaElements.get(0).getAttribute("content");
                 if (dateStr != null && !dateStr.trim().isEmpty()) {
-                    try {
-                        // Парсимо дату формату YYYY-MM-DD
-                        if (dateStr.matches("\\d{4}-\\d{2}-\\d{2}")) {
-                            LocalDateTime date = LocalDateTime.parse(dateStr.trim() + "T00:00:00");
-                            log.info("✅ Extracted posted date from detail page meta tag: '{}' -> {} (Unix: {})", 
-                                    dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
-                            return date;
-                        } else {
-                            log.debug("⚠️ Date format not supported: '{}' (expected YYYY-MM-DD)", dateStr);
-                        }
-                    } catch (Exception e) {
-                        log.debug("⚠️ Could not parse date from meta: '{}', error: {}", dateStr, e.getMessage());
+                    // ✅ ВИПРАВЛЕНО: Використовуємо DateParsingService для парсингу дати
+                    LocalDateTime date = dateParsingService.parseMetaDate(dateStr);
+                    if (date != null) {
+                        log.info("✅ Extracted posted date from detail page meta tag: '{}' -> {} (Unix: {})", 
+                                dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
+                        return date;
                     }
                 }
             }
@@ -463,15 +453,103 @@ public class DataExtractionServiceImpl implements DataExtractionService {
 
     @Override
     public String extractDescription(WebElement source) {
-        // TODO: Реалізувати логіку для картки
-        log.debug("📝 extractDescription(WebElement) not implemented yet");
+        try {
+            // ✅ Шукаємо опис за селекторами з ScrapingSelectors (найточніші)
+            for (String selector : ScrapingSelectors.DESCRIPTION) {
+                try {
+                    List<WebElement> elements = source.findElements(By.cssSelector(selector));
+                    for (WebElement element : elements) {
+                        String text = element.getText();
+                        String content = element.getAttribute("content");
+                        
+                        // Перевіряємо content атрибут
+                        if (content != null && !content.trim().isEmpty() && content.length() < 500) {
+                            // ✅ Перевіряємо, чи це не назва вакансії
+                            if (!content.contains(" at ") && !content.contains(" - ") && 
+                                !content.contains("UX Designer") && !content.contains("Software Engineer")) {
+                                log.debug("📝 Found description using selector '{}' content: '{}'", selector, content);
+                                return content.trim();
+                            }
+                        }
+                        
+                        // Перевіряємо текст елемента
+                        if (text != null && !text.trim().isEmpty() && text.length() < 500) {
+                            // ✅ Перевіряємо, чи це не назва вакансії
+                            if (!text.contains(" at ") && !text.contains(" - ") && 
+                                !text.contains("UX Designer") && !text.contains("Software Engineer")) {
+                                log.debug("📝 Found description using selector '{}' text: '{}'", selector, text);
+                                return text.trim();
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.debug("⚠️ Selector '{}' failed: {}", selector, e.getMessage());
+                }
+            }
+            
+            // ✅ Шукаємо короткий опис в meta тегах
+            List<WebElement> metaElements = source.findElements(By.cssSelector("meta[name='description'], meta[property='og:description']"));
+            for (WebElement meta : metaElements) {
+                String content = meta.getAttribute("content");
+                if (content != null && !content.trim().isEmpty() && content.length() < 500) {
+                    log.debug("📝 Found description in meta tag: '{}'", content);
+                    return content.trim();
+                }
+            }
+            
+        } catch (Exception e) {
+            log.debug("⚠️ Error extracting description: {}", e.getMessage());
+        }
+        
+        log.debug("📝 No description found");
         return null;
     }
 
     @Override
     public String extractDescription(WebDriver source) {
-        // TODO: Реалізувати логіку для детальної сторінки
-        log.debug("📝 extractDescription(WebDriver) not implemented yet");
+        try {
+            // ✅ Шукаємо опис за селекторами з ScrapingSelectors
+            for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
+                if (selector.contains("description") || selector.contains("content")) {
+                    List<WebElement> elements = source.findElements(By.cssSelector(selector));
+                    for (WebElement element : elements) {
+                        String text = element.getText();
+                        String content = element.getAttribute("content");
+                        
+                        // Перевіряємо content атрибут
+                        if (content != null && !content.trim().isEmpty() && content.length() < 1000) {
+                            if (!content.contains(" at ") && !content.contains(" - ")) {
+                                log.info("✅ Extracted description from detail page using selector '{}': '{}'", selector, content);
+                                return content.trim();
+                            }
+                        }
+                        
+                        // Перевіряємо текст елемента
+                        if (text != null && !text.trim().isEmpty() && text.length() < 1000) {
+                            if (!text.contains(" at ") && !text.contains(" - ")) {
+                                log.info("✅ Extracted description from detail page using selector '{}': '{}'", selector, text);
+                                return text.trim();
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // ✅ Шукаємо опис в meta тегах
+            List<WebElement> metaElements = source.findElements(By.cssSelector("meta[name='description'], meta[property='og:description']"));
+            for (WebElement meta : metaElements) {
+                String content = meta.getAttribute("content");
+                if (content != null && !content.trim().isEmpty() && content.length() < 1000) {
+                    log.info("✅ Extracted description from detail page meta tag: '{}'", content);
+                    return content.trim();
+                }
+            }
+            
+        } catch (Exception e) {
+            log.warn("⚠️ Error extracting description from detail page: {}", e.getMessage());
+        }
+        
+        log.debug("📝 No description found on detail page");
         return null;
     }
 }
