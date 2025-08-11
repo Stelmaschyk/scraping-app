@@ -10,5 +10,5 @@ public final class Validation {
             NOT_BLANK.test(job.getJobPageUrl()) &&
             NOT_BLANK.test(job.getOrganizationTitle()) &&
             NOT_BLANK.test(job.getLaborFunction()) &&
-            job.getPostedDate() != null;
+            job.getPostedDate() > 0; // ✅ ВИПРАВЛЕНО: Перевіряємо Unix Timestamp > 0 замість != null
 }

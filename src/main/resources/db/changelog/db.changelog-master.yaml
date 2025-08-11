@@ -5,3 +5,5 @@ databaseChangeLog:
       file: /db/changelog/changes/02-create-job-locations-table.yaml
   - include:
       file: /db/changelog/changes/03-create-job-tags-table.yaml
+  - include:
+      file: /db/changelog/changes/04-change-posted-date-to-unix-timestamp.yaml

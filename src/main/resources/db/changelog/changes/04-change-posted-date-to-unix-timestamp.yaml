@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: change-posted-date-to-unix-timestamp
+      author: svg
+      comment: Change posted_date column type from timestamp to bigint (Unix Timestamp)
+      changes:
+        - modifyDataType:
+            tableName: jobs
+            columnName: posted_date
+            newDataType: bigint
+            constraints:
+              nullable: false
+      rollback:
+        - modifyDataType:
+            tableName: jobs
+            columnName: posted_date
+            newDataType: timestamp
+            constraints:
+              nullable: false

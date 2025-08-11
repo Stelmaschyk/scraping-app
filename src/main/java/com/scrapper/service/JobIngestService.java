@@ -1,8 +1,8 @@
 package com.scrapper.service;
 
-import com.scrapper.model.JobFunction;
+import com.scrapper.model.Job;
 import java.util.List;
 
 public interface JobIngestService {
-    int scrapeAndSave(List<JobFunction> jobFunctions, List<String> requiredTags);
+    int saveJobs(List<Job> jobs);
 }

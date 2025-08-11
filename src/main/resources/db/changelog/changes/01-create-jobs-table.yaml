@@ -51,7 +51,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: posted_date
-                  type: timestamp
+                  type: bigint
                   constraints:
                     nullable: false
               - column:
