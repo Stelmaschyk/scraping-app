@@ -32,6 +32,7 @@ import com.scrapper.service.criteriaServices.DescriptionIngestService;
 import com.scrapper.service.criteriaServices.DataExtractionService;
 import com.scrapper.validation.Validation;
 import com.scrapper.service.criteriaServices.DateParsingService;
+import com.scrapper.service.webdriver.WebDriverService;
 
 /**
  * ✅ ОНОВЛЕНИЙ СЕРВІС: Змінена логіка фільтрації з гібридним завантаженням
@@ -92,41 +93,14 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
     private final JobCreationService jobCreationService;
     private final DateParsingService dateParsingService;
     private final DataExtractionService dataExtractionService;
+    private final WebDriverService webDriverService;
 
+    /**
+     * ✅ ОНОВЛЕНО: Використовуємо новий WebDriverService
+     */
     private WebDriver initializeWebDriver() {
-        WebDriverManager.chromedriver().setup();
-        
-        ChromeOptions options = new ChromeOptions();
-        
-        // ✅ ДОДАНО: Обхід блокування ботів
-        // options.addArguments("--headless"); // Тимчасово вимкнемо headless режим
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--window-size=1920,1080");
-        
-        // ✅ ДОДАНО: Обхід детекції автоматизації
-        options.addArguments("--disable-blink-features=AutomationControlled");
-        options.addArguments("--disable-extensions");
-        options.addArguments("--disable-plugins");
-        options.addArguments("--disable-images");
-        // options.addArguments("--disable-javascript"); // Вимкнемо JS тільки якщо потрібно
-        
-        // ✅ ДОДАНО: User-Agent для обходу блокування
-        options.addArguments("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-        
-        // ✅ ДОДАНО: Додаткові налаштування
-        options.addArguments("--remote-debugging-port=9222");
-        options.addArguments("--disable-web-security");
-        options.addArguments("--allow-running-insecure-content");
-        
-        // ✅ ДОДАНО: Додаткові налаштування для обходу блокування
-        options.addArguments("--disable-blink-features");
-        options.addArguments("--disable-features=VizDisplayCompositor");
-        options.addArguments("--disable-ipc-flooding-protection");
-        
-        log.info("🔧 Initializing Chrome WebDriver with anti-bot protection bypass (visible mode)");
-        return new ChromeDriver(options);
+        log.info("🔧 Initializing Chrome WebDriver using WebDriverService...");
+        return webDriverService.createWebDriver();
     }
 
     @Override
@@ -169,12 +143,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             throw new RuntimeException("Failed to scrape jobs with Selenium", e);
         } finally {
             if (driver != null) {
-                try { 
-                    driver.quit(); 
-                    log.info("🔒 WebDriver closed successfully"); 
-                } catch (Exception e) { 
-                    log.warn("⚠️ Error closing WebDriver", e); 
-                }
+                webDriverService.closeWebDriver(driver);
             }
         }
     }
@@ -238,11 +207,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             return new ArrayList<>();
         } finally {
             if (driver != null) {
-                try {
-                    driver.quit();
-                } catch (Exception e) {
-                    log.warn("⚠️ Error closing WebDriver: {}", e.getMessage());
-                }
+                webDriverService.closeWebDriver(driver);
             }
         }
     }
@@ -601,8 +566,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
      * - Адаптивне завершення коли контент більше не завантажується
      */
     private List<Job> scrapeAllJobsWithImprovedLogic(WebDriver driver, List<String> jobFunctions) {
-        log.info("🔍 Starting updated job scraping process with NEW LOGIC...");
-        log.info("🔍 Job functions to filter by: {} (type: {})", jobFunctions, 
+        log.info("🔍 Job functions to filter by: {} (type: {})", jobFunctions,
                 jobFunctions != null ? jobFunctions.getClass().getSimpleName() : "null");
         
         if (jobFunctions != null) {
@@ -726,12 +690,12 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             // Детальна сторінка вакансії
             log.info("🎯 Detected job detail page, applying new filtering logic...");
             return scrapeSingleJobFromDetailPage(driver, jobFunctions);
-            
+
         } else if (currentUrl.contains("/companies/")) {
             // Сторінка компанії зі списком вакансій
             log.info("🏢 Detected company page, applying new filtering logic...");
             return scrapeJobsFromCompanyPage(driver, jobFunctions);
-            
+
         } else if (currentUrl.contains("/jobs")) {
             // Головна сторінка зі списком вакансій
             log.info("📋 Detected main jobs page, applying new filtering logic...");
@@ -899,40 +863,40 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
      */
     private List<Job> scrapeJobsFromCompanyPage(WebDriver driver, List<String> jobFunctions) {
         List<Job> jobs = new ArrayList<>();
-        
+
         try {
             // Шукаємо картки вакансій на сторінці компанії
             List<WebElement> jobCards = findJobCardsOnCompanyPage(driver);
             log.info("🔍 Found {} job cards on company page", jobCards.size());
-            
+
             for (WebElement card : jobCards) {
                 try {
                     // ✅ КРОК 1: Фільтрація за функціями (ПЕРШИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
                     if (!hasRequiredJobFunction(card, jobFunctions)) {
                         continue;
                     }
-                    
+
                     // ✅ КРОК 2: Пошук URL (ДРУГИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
                     String jobPageUrl = findDirectJobUrl(card);
                     if (jobPageUrl == null) {
                         continue;
                     }
-                    
+
                     // ✅ КРОК 3: Збереження вакансії (всі проходять однакову обробку)
                     Job job = createJobFromCard(card, jobPageUrl, jobFunctions);
                     if (job != null) {
                         jobs.add(job);
                     }
-                    
+
                 } catch (Exception e) {
                     log.warn("⚠️ Error processing job card on company page: {}", e.getMessage());
                 }
             }
-            
+
         } catch (Exception e) {
             log.error("❌ Error scraping jobs from company page: {}", e.getMessage());
         }
-        
+
         return jobs;
     }
     
@@ -951,10 +915,6 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
      */
     private List<WebElement> findJobCardsWithMultipleStrategies(WebDriver driver) {
         log.info("🔍 Finding job cards with multiple strategies...");
-        
-        // ✅ ДОДАНО: Детальне логування для діагностики
-        log.info("🔍 Testing {} specific selectors from ScrapingSelectors.JOB_CARD", ScrapingSelectors.JOB_CARD.length);
-        
         // ✅ ОПТИМІЗОВАНО: Спочатку тестуємо найбільш ймовірний селектор
         String primarySelector = "[class*='job-card']";
         try {
@@ -1002,35 +962,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                 log.warn("⚠️ Selector '{}' failed: {}", selector, e.getMessage());
             }
         }
-        
-        // Якщо нічого не знайшли, спробуємо загальні селектори
-        log.warn("⚠️ No job cards found with specific selectors, trying general selectors...");
-        
-        String[] generalSelectors = {
-            "div[class*='job']", "div[class*='position']", "div[class*='card']", 
-            "div[class*='item']", "div[class*='listing']", "div[class*='posting']",
-            "div[class*='sc-']", "div[class*='opportunity']"
-        };
-        
-        for (String selector : generalSelectors) {
-            try {
-                List<WebElement> elements = driver.findElements(By.cssSelector(selector));
-                log.info("🔍 General selector '{}' -> found {} elements", selector, elements.size());
-                
-                if (!elements.isEmpty()) {
-                    log.info("✅ Found {} elements with general selector: '{}'", elements.size(), selector);
-                    return elements;
-                }
-            } catch (Exception e) {
-                log.debug("⚠️ General selector '{}' failed: {}", selector, e.getMessage());
-            }
-        }
-        
-        // Остання спроба - знайти будь-які div елементи
-        log.warn("⚠️ No specific elements found, trying to find any div elements...");
         List<WebElement> allDivs = driver.findElements(By.tagName("div"));
-        log.info("🔍 Found {} total div elements on page", allDivs.size());
-        
         // ✅ ДОДАНО: Аналіз перших кількох div елементів для діагностики
         int sampleSize = Math.min(10, allDivs.size());
         for (int i = 0; i < sampleSize; i++) {
@@ -1040,14 +972,13 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                 String dataTestId = div.getAttribute("data-testid");
                 String tagName = div.getTagName();
                 String text = div.getText();
-                log.info("🔍 Div {}: tag='{}', class='{}', data-testid='{}', text='{}'", 
-                    i + 1, tagName, className, dataTestId, 
+                log.info("🔍 Div {}: tag='{}', class='{}', data-testid='{}', text='{}'",
+                    i + 1, tagName, className, dataTestId,
                     text.length() > 50 ? text.substring(0, 50) + "..." : text);
             } catch (Exception e) {
                 log.warn("⚠️ Error analyzing div {}: {}", i + 1, e.getMessage());
             }
         }
-        
         // Повертаємо перші 50 div елементів для аналізу
         return allDivs.subList(0, Math.min(50, allDivs.size()));
     }
@@ -1100,7 +1031,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
 
             log.debug("⚠️ Жодна стратегія пошуку URL не спрацювала для цієї картки");
             return null;
-            
+
         } catch (Exception e) {
             log.warn("⚠️ Error in findDirectJobUrl: {}", e.getMessage());
             return null;
@@ -1270,8 +1201,6 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         }
     }
 
-
-
     /**
      * ✅ НОВИЙ МЕТОД: Екстракція заголовка з детальної сторінки
      */
@@ -1412,7 +1341,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
      */
     private List<WebElement> findJobCardsOnCompanyPage(WebDriver driver) {
         List<WebElement> jobCards = new ArrayList<>();
-        
+
         try {
             for (String selector : ScrapingSelectors.COMPANY_PAGE_JOBS) {
                 List<WebElement> elements = driver.findElements(By.cssSelector(selector));
@@ -1421,14 +1350,14 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                     log.info("✅ Found {} job cards with selector: {}", elements.size(), selector);
                 }
             }
-            
+
             // Фільтруємо неправильні елементи
             jobCards = Validation.filterValidJobCards(jobCards);
-            
+
         } catch (Exception e) {
             log.warn("⚠️ Error finding job cards on company page: {}", e.getMessage());
         }
-        
+
         return jobCards;
     }
 
