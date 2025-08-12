@@ -32,10 +32,5 @@ public enum JobFunction {
         return displayName;
     }
 
-    public static Optional<JobFunction> fromDisplayName(String name) {
-        if (!Validation.NOT_BLANK.test(name)) return Optional.empty();
-        return Arrays.stream(values())
-            .filter(f -> f.displayName.equalsIgnoreCase(name.trim()))
-            .findFirst();
-    }
+
 }

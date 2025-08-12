@@ -35,52 +35,7 @@ public class ScrapingSelectors {
         "div[class*='posting']:has(a[href])"
     };
 
-    // ✅ ДОДАНО: Селектори для навігаційних елементів (щоб їх виключати)
-    public static final String[] NAVIGATION_ELEMENTS = new String[]{
-        "[data-testid=search]",
-        "[data-testid=navigation]",
-        "[data-testid=header]",
-        "[data-testid=footer]",
-        "[data-testid=sidebar]",
-        "[data-testid=filter]",
-        "[data-testid=pagination]",
-        ".navigation",
-        ".header",
-        ".footer",
-        ".sidebar",
-        ".filter",
-        ".pagination",
-        "nav",
-        "header",
-        "footer",
-        "aside"
-    };
 
-    // ✅ ДОДАНО: Селектори для фільтрів та пошуку (щоб їх виключати)
-    public static final String[] FILTER_ELEMENTS = new String[]{
-        "[data-testid=filter]",
-        "[data-testid=search]",
-        "[data-testid=sort]",
-        "[data-testid=dropdown]",
-        ".filter",
-        ".search",
-        ".sort",
-        ".dropdown",
-        "select",
-        "input[type='search']",
-        "input[type='text']"
-    };
-
-    // Селектори для кнопок та посилань (щоб їх виключати)
-    public static final String[] BUTTON_ELEMENTS = new String[]{
-        "[data-testid=button]",
-        "[data-testid=link]",
-        "button",
-        "a:not([href*='/jobs/']):not([href*='/companies/'])",
-        ".btn",
-        ".button",
-        ".link"
-    };
 
     // Селектори для заголовків вакансій (використовуються в JobIngestServiceImpl та CombinedJobIngestService)
     public static final String[] JOB_TITLE = new String[]{
@@ -134,6 +89,33 @@ public class ScrapingSelectors {
         "div.sc-beqWaB.sc-gueYoa.ictnPY.MYFxR",
         "div.sc-beqWaB.ewYjoF",
         "span.sc-beqWaB.vIGjl",
+    };
+
+    // Селектори для кнопки "Job function" (щоб відкрити dropdown)
+    public static final String[] JOB_FUNCTION_BUTTON = new String[]{
+        "div.sc-beqWaB.fmYNJF",
+        "div[class*='fmYNJF']",
+        "div:contains('Job function')",
+        "[data-testid*='job-function']",
+        "[data-testid*='function-filter']",
+        "div[role='button']:has(div:contains('Job function'))"
+    };
+
+    // Селектори для опцій job functions в dropdown
+    public static final String[] JOB_FUNCTION_OPTIONS = new String[]{
+        "div.sc-beqWaB.dfbUjw",
+        "div[class*='dfbUjw']",
+        "[data-testid*='job_functions-']",
+        "div[role='listitem'] div",
+        "div[class*='sc-beqWaB'][class*='dfbUjw']"
+    };
+
+    public static final String[] JOB_COUNT_SELECTOR = new String[]{
+        "div.sc-beqWaB.eJrfpP",
+        "div[class*='eJrfpP']",
+        "div[color='text.main']",
+        "div:contains('Showing')",
+        "div:contains('jobs')"
     };
 
     // Селектори для дат публікації (використовуються в JobIngestServiceImpl)
@@ -225,7 +207,11 @@ public class ScrapingSelectors {
 
     // Селектори для кнопки Load More
     public static final String[] LOAD_MORE_BUTTON = new String[]{
+        // Точний селектор для Techstars (найвищий пріоритет)
         "button[data-testid='load-more']",
+        "button[data-testid='load-more'][data-loading='false']",
+        
+        // Альтернативні селектори
         "button[data-testid='show-more']",
         "button:contains('Load more')",
         "button:contains('Load More')",
@@ -235,6 +221,12 @@ public class ScrapingSelectors {
         "a[data-testid='show-more']",
         "a:contains('Load more')",
         "a:contains('Show more')",
+        
+        // Загальні селектори
+        "button[class*='load']",
+        "button[class*='more']",
+        "a[class*='load']",
+        "a[class*='more']"
     };
 
     // ✅ ДОДАНО: Селектори для пошуку вакансій на різних сторінках

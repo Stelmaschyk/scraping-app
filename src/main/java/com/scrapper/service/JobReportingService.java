@@ -57,61 +57,7 @@ public class JobReportingService {
         log.info("🔍 НОВА ГІБРИДНА ЛОГІКА: 1) job functions → 2) Load More (ОДИН раз) → 3) нескінченна прокрутка → 4) URL → 5) префікс компанії → 6) збір тегів (без фільтрації)");
     }
 
-    /**
-     * Формує звіт про початкову завантаження сторінки
-     */
-    public void printPageLoadReport(String pageTitle, String currentUrl, int totalElements) {
-        log.info("📄 ЗВІТ ПРО ЗАВАНТАЖЕННЯ СТОРІНКИ:");
-        log.info("   • Заголовок: '{}'", pageTitle);
-        log.info("   • URL: {}", currentUrl);
-        log.info("   • Всього елементів: {}", totalElements);
-        
-        if (totalElements < 50) {
-            log.warn("⚠️ Сторінка здається порожньою! Знайдено лише {} елементів", totalElements);
-        } else {
-            log.info("✅ Сторінка завантажена успішно");
-        }
-    }
 
-    /**
-     * Формує звіт про пошук карток вакансій
-     */
-    public void printJobCardsSearchReport(List<String> selectors, int foundElements, String successfulSelector) {
-        log.info("🔍 ЗВІТ ПРО ПОШУК КАРТОК ВАКАНСІЙ:");
-        log.info("   • Перевірено селекторів: {}", selectors.size());
-        log.info("   • Знайдено елементів: {}", foundElements);
-        
-        if (successfulSelector != null) {
-            log.info("✅ Успішний селектор: '{}'", successfulSelector);
-        } else {
-            log.warn("⚠️ Жоден селектор не дав результатів");
-        }
-        
-        for (String selector : selectors) {
-            log.debug("   • Селектор: '{}'", selector);
-        }
-    }
-
-    /**
-     * Формує звіт про обробку карток вакансій
-     */
-    public void printJobProcessingReport(int totalCards, int processedCards, int successfulJobs, 
-                                       List<String> jobFunctions, String requiredPrefix) {
-        log.info("🔄 ЗВІТ ПРО ОБРОБКУ КАРТОК ВАКАНСІЙ:");
-        log.info("   • Всього карток: {}", totalCards);
-        log.info("   • Оброблено карток: {}", processedCards);
-        log.info("   • Успішно створено вакансій: {}", successfulJobs);
-        log.info("   • Фільтр функцій: {}", jobFunctions);
-        log.info("   • Обов'язковий префікс: {}", requiredPrefix);
-        
-        if (totalCards > 0) {
-            log.info("   • Ефективність обробки: {:.1f}%", (double) successfulJobs / totalCards * 100);
-        }
-        
-        if (processedCards > 0) {
-            log.info("   • Конверсія в вакансії: {:.1f}%", (double) successfulJobs / processedCards * 100);
-        }
-    }
 
     /**
      * Формує звіт про помилки

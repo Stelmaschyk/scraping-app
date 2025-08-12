@@ -32,13 +32,6 @@ import com.scrapper.service.webdriver.WebDriverService;
  * 5. І тільки потім зчитування URL та перевірка префіксу
  * 6. Якщо URL містить https://jobs.techstars.com/companies/ то вакансія зберігається
  * 8. Теги збираються для всіх збережених вакансій
- * <p>
- * ГІБРИДНИЙ ПІДХІД ЗАВАНТАЖЕННЯ:
- * - Спочатку кнопка Load More (якщо є)
- * - Потім автоматичне завантаження при прокрутці
- * - Адаптивне завершення коли контент більше не завантажується
- * <p>
- * Це дозволяє зберігати всі вакансії компаній Techstars, незалежно від тегів
  */
 @Service
 @RequiredArgsConstructor
@@ -198,7 +191,9 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
 
     private void clickLoadMoreButton(WebDriver driver) {
         // ✅ ВИКОРИСТОВУЄМО PageInteractionService
+        log.info("🔍 ApplyUrlScraperServiceImpl: Викликаємо clickLoadMoreButton...");
         pageInteractionService.clickLoadMoreButton(driver);
+        log.info("🔍 ApplyUrlScraperServiceImpl: clickLoadMoreButton завершено");
     }
 
     private void scrollToBottom(WebDriver driver) {
@@ -229,7 +224,9 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
      */
     private void scrollToLoadMore(WebDriver driver, List<String> jobFunctions) {
         // ✅ ВИКОРИСТОВУЄМО PageInteractionService
+        log.info("🔍 ApplyUrlScraperServiceImpl: Викликаємо scrollToLoadMore...");
         pageInteractionService.loadContentWithHybridApproach(driver, jobFunctions);
+        log.info("🔍 ApplyUrlScraperServiceImpl: scrollToLoadMore завершено");
     }
 
     /**
@@ -271,14 +268,61 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
 
         // ✅ КРОК 1: Спочатку фільтрація за job functions
         log.info("🔍 КРОК 1: Застосовуємо фільтрацію за job functions...");
+        
+        // Натискаємо на фільтр IT якщо він є
+        boolean filterApplied = false;
+        log.info("🔍 Перевіряємо jobFunctions: {}", jobFunctions);
+        if (jobFunctions != null && !jobFunctions.isEmpty()) {
+            log.info("🔍 JobFunctions не пустий, починаємо застосування фільтрів...");
+            for (String function : jobFunctions) {
+                log.info("🔍 Спроба застосування фільтра для: '{}'", function);
+                filterApplied = pageInteractionService.clickJobFunctionFilter(driver, function);
+                log.info("🔍 Результат застосування фільтра '{}': {}", function, filterApplied);
+                if (filterApplied) {
+                    log.info("✅ Job function filter '{}' applied successfully", function);
+                    log.info("🔍 Перевіряємо, чи дійсно фільтр застосовано - чекаємо 3 секунди...");
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    
+                    // Після успішного застосування фільтра отримуємо загальну кількість вакансій
+                    log.info("🔍 КРОК 2: Отримуємо загальну кількість вакансій після застосування фільтра...");
+                    log.info("🔍 Чекаємо 3 секунди після застосування фільтра...");
+                    try {
+                        Thread.sleep(3000); // Чекаємо, щоб сторінка оновилася
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    
+                    // Отримуємо загальну кількість вакансій
+                    int totalJobsExpected = pageInteractionService.getTotalJobCountFromTextAfterFiltering(driver);
+                    
+                    // Завантажуємо всі доступні вакансії
+                    log.info("🔍 КРОК 3: Завантажуємо всі доступні вакансії (очікується: {})...", totalJobsExpected);
+                    pageInteractionService.loadAllAvailableJobs(driver, totalJobsExpected);
+                    log.info("🔍 Завантаження вакансій завершено");
+                    
+                    break; // Застосовуємо тільки перший фільтр
+                }
+            }
+        }
 
-        // ✅ КРОК 2: Натискаємо кнопку Load More ОДИН раз
-        log.info("🔍 КРОК 2: Натискаємо кнопку Load More ОДИН раз...");
-        clickLoadMoreButton(driver);
-
-        // ✅ КРОК 3: Скролимо сторінку до низу
-        log.info("🔍 КРОК 3: Скролимо сторінку до низу...");
-        scrollToLoadMore(driver, jobFunctions);
+        // ✅ КРОК 2-3: Виконуємо тільки якщо фільтр НЕ застосовано
+        log.info("🔍 Фінальна перевірка filterApplied: {}", filterApplied);
+        if (!filterApplied) {
+            log.info("🔍 КРОК 2: Отримуємо загальну кількість вакансій (фільтр не застосовано)...");
+            
+            // Отримуємо загальну кількість вакансій
+            int totalJobsExpected = pageInteractionService.getTotalJobCountFromTextAfterFiltering(driver);
+            
+            log.info("🔍 КРОК 3: Завантажуємо всі доступні вакансії (очікується: {})...", totalJobsExpected);
+            pageInteractionService.loadAllAvailableJobs(driver, totalJobsExpected);
+            log.info("🔍 Завантаження вакансій завершено");
+        } else {
+            log.info("🔍 Фільтр застосовано, пропускаємо загальну логіку завантаження");
+        }
 
         // ✅ КРОК 4: Тепер шукаємо всі картки вакансій
         log.info("🔍 КРОК 4: Шукаємо всі картки вакансій після завантаження...");
@@ -599,39 +643,9 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         return pageInteractionService.findDirectJobUrl(jobCard);
     }
 
-    private boolean hasRequiredTags(WebElement jobCard, List<String> requiredTags) {
-        if (requiredTags == null || requiredTags.isEmpty()) {
-            log.debug("🔍 No required tags specified, passing all cards");
-            return true;
-        }
-
-        try {
-            String cardText = jobCard.getText().toLowerCase();
-            log.debug("🔍 Card text (first 200 chars): '{}'",
-                cardText.length() > 200 ? cardText.substring(0, 200) + "..." : cardText);
-
-            boolean hasTags = requiredTags.stream()
-                .anyMatch(tag -> {
-                    boolean contains = cardText.contains(tag.toLowerCase());
-                    log.debug("🔍 Tag '{}' found: {}", tag, contains);
-                    return contains;
-                });
-
-            log.debug("🔍 Card passed tag filter: {}", hasTags);
-            return hasTags;
-        } catch (Exception e) {
-            log.warn("⚠️ Error checking tags: {}", e.getMessage());
-            return true; // В разі помилки пропускаємо
-        }
-    }
-
-
-
     private Job createJobFromCard(WebElement card, String jobPageUrl, List<String> jobFunctions) {
         try {
             log.debug("🔍 Creating Job object for URL: {}", jobPageUrl);
-
-            // ✅ ВИПРАВЛЕНО: Використовуємо DataExtractionService для витягування всіх даних
             String organizationTitle = dataExtractionService.extractCompanyName(card);
             String positionName = dataExtractionService.extractTitle(card);
             List<String> tags = dataExtractionService.extractTags(card);
@@ -655,7 +669,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                 jobFunctions, description
             );
 
-            // ✅ ДОДАНО: Зберігаємо опис вакансії через DescriptionIngestService (тільки якщо це
+            // Зберігаємо опис вакансії (тільки якщо це
             // не заглушка)
             if (job != null && description != null && !description.trim().isEmpty() &&
                 !description.equals("Job scraped from Techstars")) {
@@ -685,60 +699,16 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
     private void printUpdatedFinalReport(int totalCards, int passedFunctionFilter,
                                          int foundUrls, int finalJobs, int savedWithCompanyPrefix,
                                          int savedWithoutCompanyPrefix, List<String> functions) {
-        log.info("📊 ОНОВЛЕНИЙ ЗВІТ ПРО ФІЛЬТРАЦІЮ (НОВА ЛОГІКА):");
+        log.info("📊 ОНОВЛЕНИЙ ЗВІТ ПРО ФІЛЬТРАЦІЮ:");
         log.info("   • Всього карток: {}", totalCards);
         log.info("   • Пройшли фільтр функцій: {}", passedFunctionFilter);
         log.info("   • Знайдено URL: {}", foundUrls);
-        log.info("   • Збережено з префіксом компанії (БЕЗ перевірки тегів): {}",
+        log.info("   • Збережено з префіксом компанії: {}",
             savedWithCompanyPrefix);
         log.info("   • Збережено без префіксу компанії (тільки фільтр функцій): {}",
             savedWithoutCompanyPrefix);
         log.info("   • Фінальних вакансій: {}", finalJobs);
-
-        if (totalCards > 0) {
-            log.info("   • Ефективність фільтрації функцій: {:.1f}%",
-                (double) passedFunctionFilter / totalCards * 100);
-        }
-        if (passedFunctionFilter > 0) {
-            log.info("   • Конверсія в URL: {:.1f}%",
-                (double) foundUrls / passedFunctionFilter * 100);
-        }
-        if (foundUrls > 0) {
-            log.info("   • Конверсія в фінальні вакансії: {:.1f}%",
-                (double) finalJobs / foundUrls * 100);
-            log.info("   • Частка збережених з префіксом компанії: {:.1f}%",
-                (double) savedWithCompanyPrefix / foundUrls * 100);
-            log.info("   • Частка збережених без префіксу компанії: {:.1f}%",
-                (double) savedWithoutCompanyPrefix / foundUrls * 100);
-        }
         log.info("   • Застосовані функції: {}", functions);
-
-        // ✅ ДОДАНО: Перевірка нової логіки
-        if (savedWithCompanyPrefix > 0) {
-            log.info("✅ Нова логіка працює: {} вакансій збережено з префіксом компанії БЕЗ "
-                + "перевірки тегів", savedWithCompanyPrefix);
-        }
-
-        if (passedFunctionFilter > 0 && foundUrls == 0) {
-            log.error("❌ КРИТИЧНА ПОМИЛКА: Всі {} відфільтрованих карток не дали URL!",
-                passedFunctionFilter);
-        }
-
-        if (foundUrls > 0 && finalJobs == 0) {
-            log.error("❌ КРИТИЧНА ПОМИЛКА: Всі {} знайдених URL не пройшли фінальну перевірку!",
-                foundUrls);
-        }
-
         log.info("🎯 Результат: {} з {} карток успішно оброблено", finalJobs, totalCards);
-        log.info("🔍 НОВА ГІБРИДНА ЛОГІКА: 1) job functions → 2) Load More (ОДИН раз) → 3) "
-            + "нескінченна прокрутка → 4) URL → 5) префікс компанії → 6) збір тегів (без "
-            + "фільтрації)");
     }
-
-    private void sleep(long milliseconds) {
-        // ✅ ВИКОРИСТОВУЄМО PageInteractionService
-        pageInteractionService.sleep(milliseconds);
-    }
-
-
 }
