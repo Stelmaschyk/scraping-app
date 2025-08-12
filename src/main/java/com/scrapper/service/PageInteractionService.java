@@ -204,17 +204,7 @@ public class PageInteractionService {
         return previousJobCount > 0;
     }
 
-    /**
-     * Рахує кількість карток вакансій на сторінці
-     */
-    private int countJobCards(WebDriver driver) {
-        try {
-            List<WebElement> cards = driver.findElements(By.cssSelector(JOB_CARD_SELECTOR));
-            return cards.size();
-        } catch (Exception e) {
-            return 0;
-        }
-    }
+
 
     /**
      * Рахує кількість карток вакансій з фільтрацією за job functions
@@ -988,38 +978,45 @@ public class PageInteractionService {
         int attemptsWithNoNewJobs = 0;
         final int MAX_ATTEMPTS_WITH_NO_NEW_JOBS = 3; // Запобіжник від нескінченного циклу
 
-        // Цикл триває, доки не завантажимо всі вакансії або не перестанемо знаходити нові
+        // Спочатку спробуємо кнопку "Load More" один раз
+        WebElement loadMoreButton = findLoadMoreButton(driver);
+        if (loadMoreButton != null && isButtonClickable(loadMoreButton)) {
+            log.info("🔘 Found 'Load More' button, clicking once...");
+            try {
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loadMoreButton);
+                sleep(scrollDelay);
+            } catch (Exception e) {
+                log.warn("⚠️ Could not click 'Load More' button: {}", e.getMessage());
+            }
+        } else {
+            log.info("📜 'Load More' button not found, will use scrolling only.");
+        }
+
+        // Тепер використовуємо тільки скролінг для завантаження решти контенту
         while (currentJobCount < totalJobsExpected && attemptsWithNoNewJobs < MAX_ATTEMPTS_WITH_NO_NEW_JOBS) {
             currentJobCount = driver.findElements(By.cssSelector(JOB_CARD_SELECTOR)).size();
-            log.info("... Current job count: {} / {}", currentJobCount, totalJobsExpected);
+            
+            // Логуємо тільки кожні 20 вакансій, щоб зменшити спам
+            if (currentJobCount % 20 == 0 || currentJobCount >= totalJobsExpected) {
+                log.info("... Current job count: {} / {}", currentJobCount, totalJobsExpected);
+            }
 
             if (currentJobCount >= totalJobsExpected) {
                 log.info("✅ All expected jobs seem to be loaded.");
                 break;
             }
             
-            // Спочатку шукаємо і клікаємо на кнопку "Load More"
-            WebElement loadMoreButton = findLoadMoreButton(driver);
-            if (loadMoreButton != null && isButtonClickable(loadMoreButton)) {
-                log.info("🔘 Clicking 'Load More' button.");
-                try {
-                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loadMoreButton);
-                    sleep(scrollDelay); // Чекаємо на завантаження
-                } catch (Exception e) {
-                    log.warn("⚠️ Could not click 'Load More' button: {}", e.getMessage());
-                }
-            } else {
-                // Якщо кнопки немає, просто скролимо вниз
-                log.info("📜 'Load More' button not found or not clickable. Scrolling down.");
-                ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight);");
-                sleep(scrollDelay);
-            }
+            // Просто скролимо вниз
+            ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight);");
+            sleep(scrollDelay);
 
             // Перевірка, чи з'явилися нові вакансії
             int newJobCount = driver.findElements(By.cssSelector(JOB_CARD_SELECTOR)).size();
             if (newJobCount == currentJobCount) {
                 attemptsWithNoNewJobs++;
-                log.warn("⚠️ No new jobs loaded. Attempt {} of {}.", attemptsWithNoNewJobs, MAX_ATTEMPTS_WITH_NO_NEW_JOBS);
+                if (attemptsWithNoNewJobs == 1) {
+                    log.warn("⚠️ No new jobs loaded. Attempt {} of {}.", attemptsWithNoNewJobs, MAX_ATTEMPTS_WITH_NO_NEW_JOBS);
+                }
             } else {
                 attemptsWithNoNewJobs = 0; // Скидаємо лічильник, якщо контент завантажився
             }

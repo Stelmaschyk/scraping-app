@@ -222,21 +222,9 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
      * - Спочатку кнопка Load More
      * - Потім автоматичне завантаження при прокрутці
      */
-    private void scrollToLoadMore(WebDriver driver, List<String> jobFunctions) {
-        // ✅ ВИКОРИСТОВУЄМО PageInteractionService
-        log.info("🔍 ApplyUrlScraperServiceImpl: Викликаємо scrollToLoadMore...");
-        pageInteractionService.loadContentWithHybridApproach(driver, jobFunctions);
-        log.info("🔍 ApplyUrlScraperServiceImpl: scrollToLoadMore завершено");
-    }
 
-    /**
-     * ✅ НОВИЙ МЕТОД: Натискання кнопки Load More ОДИН раз
-     */
-    private boolean clickLoadMoreButtonOnce(WebDriver driver) {
-        // ✅ ВИКОРИСТОВУЄМО PageInteractionService
-        pageInteractionService.clickLoadMoreButton(driver);
-        return true; // Припускаємо, що кнопка була знайдена та натиснута
-    }
+
+
 
     /**
      * ✅ ОНОВЛЕНА ВЕРСІЯ СКРАПІНГУ З НОВОЮ ЛОГІКОЮ ТА ГІБРИДНИМ ЗАВАНТАЖЕННЯМ
@@ -362,7 +350,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                 }
 
                 // ✅ КРОК 6: Пошук URL (ДРУГИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
-                String jobPageUrl = findDirectJobUrl(card);
+                String jobPageUrl = pageInteractionService.findDirectJobUrl(card);
                 if (jobPageUrl == null) {
                     if (isFirstCards) {
                         log.info("🔍 Card {}: No URL found after passing function filter", i + 1);
@@ -596,7 +584,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                                     // ✅ КРОК 1: Пропускаємо фільтрацію за функціями - обробляємо всі картки
 
                     // ✅ КРОК 2: Пошук URL (ДРУГИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
-                    String jobPageUrl = findDirectJobUrl(card);
+                    String jobPageUrl = pageInteractionService.findDirectJobUrl(card);
                     if (jobPageUrl == null) {
                         continue;
                     }
@@ -638,14 +626,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         return pageInteractionService.findJobCardsWithMultipleStrategies(driver);
     }
 
-    /**
-     * ✅ НОВА, НАДІЙНА ВЕРСІЯ МЕТОДУ
-     * Шукає пряме посилання на вакансію в картці, використовуючи кілька стратегій
-     */
-    private String findDirectJobUrl(WebElement jobCard) {
-        // ✅ ВИКОРИСТОВУЄМО PageInteractionService
-        return pageInteractionService.findDirectJobUrl(jobCard);
-    }
+
 
     private Job createJobFromCard(WebElement card, String jobPageUrl, List<String> jobFunctions) {
         try {
