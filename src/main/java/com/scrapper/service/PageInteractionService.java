@@ -351,27 +351,7 @@ public class PageInteractionService {
     /**
      * Пошук карток вакансій на сторінці компанії
      */
-    public List<WebElement> findJobCardsOnCompanyPage(WebDriver driver) {
-        List<WebElement> jobCards = new ArrayList<>();
 
-        try {
-            for (String selector : ScrapingSelectors.COMPANY_PAGE_JOBS) {
-                List<WebElement> elements = driver.findElements(By.cssSelector(selector));
-                if (!elements.isEmpty()) {
-                    jobCards.addAll(elements);
-                    log.info("✅ Found {} job cards with selector: {}", elements.size(), selector);
-                }
-            }
-
-            // Фільтруємо неправильні елементи
-            jobCards = Validation.filterValidJobCards(jobCards);
-
-        } catch (Exception e) {
-            log.warn("⚠️ Error finding job cards on company page: {}", e.getMessage());
-        }
-
-        return jobCards;
-    }
 
     /**
      * Знаходить пряме посилання на вакансію в картці
@@ -446,7 +426,7 @@ public class PageInteractionService {
      * Крок 2: Вибирає потрібну опцію з dropdown
      */
     public boolean clickJobFunctionFilter(WebDriver driver, String jobFunction) {
-        log.info("🔍 Attempting to click job function filter: '{}'", jobFunction);
+        log.debug("🔍 Attempting to click job function filter: '{}'", jobFunction);
         
         try {
             // КРОК 1: Знаходимо та натискаємо на кнопку "Job function"
@@ -456,7 +436,7 @@ public class PageInteractionService {
                 return false;
             }
             
-            log.info("✅ Found 'Job function' button, clicking to open dropdown...");
+            log.debug("✅ Found 'Job function' button, clicking to open dropdown...");
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", jobFunctionButton);
             Thread.sleep(500);
             

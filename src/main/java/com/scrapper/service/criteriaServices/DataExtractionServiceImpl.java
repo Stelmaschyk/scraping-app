@@ -215,7 +215,7 @@ public class DataExtractionServiceImpl implements DataExtractionService {
                     // ✅ ВИПРАВЛЕНО: Використовуємо DateParsingService для парсингу дати
                     LocalDateTime date = dateParsingService.parseMetaDate(dateStr);
                     if (date != null) {
-                        log.info("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})", 
+                        log.debug("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})", 
                                 dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
                         return date;
                     }
@@ -241,7 +241,7 @@ public class DataExtractionServiceImpl implements DataExtractionService {
                     // ✅ ВИПРАВЛЕНО: Використовуємо DateParsingService для парсингу дати
                     LocalDateTime date = dateParsingService.parseMetaDate(dateStr);
                     if (date != null) {
-                        log.info("✅ Extracted posted date from detail page meta tag: '{}' -> {} (Unix: {})", 
+                        log.debug("✅ Extracted posted date from detail page meta tag: '{}' -> {} (Unix: {})", 
                                 dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
                         return date;
                     }
@@ -343,7 +343,7 @@ public class DataExtractionServiceImpl implements DataExtractionService {
         log.debug("🔍 Strategy 1 - JOB_TITLE selector result: '{}'", title);
         
         if (title != null && !title.trim().isEmpty()) {
-            log.info("💼 Found title using JOB_TITLE selector: '{}'", title.trim());
+            log.debug("💼 Found title using JOB_TITLE selector: '{}'", title.trim());
             return title.trim();
         }
         
@@ -355,7 +355,7 @@ public class DataExtractionServiceImpl implements DataExtractionService {
             log.debug("🔍 data-testid='job-title' text: '{}'", text);
             
             if (text != null && !text.trim().isEmpty()) {
-                log.info("💼 Found title using data-testid='job-title': '{}'", text.trim());
+                log.debug("💼 Found title using data-testid='job-title': '{}'", text.trim());
                 return text.trim();
             }
         } catch (Exception e) {
@@ -374,11 +374,11 @@ public class DataExtractionServiceImpl implements DataExtractionService {
                 log.debug("🔍 Title element - content: '{}', text: '{}'", content, text);
                 
                 if (content != null && !content.trim().isEmpty()) {
-                    log.info("💼 Found title using [itemprop='title'] content: '{}'", content.trim());
+                    log.debug("💼 Found title using [itemprop='title'] content: '{}'", content.trim());
                     return content.trim();
                 }
                 if (text != null && !text.trim().isEmpty()) {
-                    log.info("💼 Found title using [itemprop='title'] text: '{}'", text.trim());
+                    log.debug("💼 Found title using [itemprop='title'] text: '{}'", text.trim());
                     return text.trim();
                 }
             }
@@ -397,7 +397,7 @@ public class DataExtractionServiceImpl implements DataExtractionService {
                 log.debug("🔍 Heading text: '{}'", text);
                 
                 if (text != null && !text.trim().isEmpty() && text.length() > 3) {
-                    log.info("💼 Found title in heading: '{}'", text.trim());
+                    log.debug("💼 Found title in heading: '{}'", text.trim());
                     return text.trim();
                 }
             }
@@ -420,7 +420,7 @@ public class DataExtractionServiceImpl implements DataExtractionService {
                 if (text != null && !text.trim().isEmpty() && 
                     href != null && href.contains("/jobs/") && 
                     text.length() > 3 && text.length() < 100) {
-                    log.info("💼 Found title in job link: '{}'", text.trim());
+                    log.debug("💼 Found title in job link: '{}'", text.trim());
                     return text.trim();
                 }
             }

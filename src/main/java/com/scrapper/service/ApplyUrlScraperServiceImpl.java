@@ -243,45 +243,19 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
      * - Адаптивне завершення коли контент більше не завантажується
      */
     private List<Job> scrapeAllJobsWithImprovedLogic(WebDriver driver, List<String> jobFunctions) {
-        log.info("🔍 Job functions to filter by: {} (type: {})", jobFunctions,
-            jobFunctions != null ? jobFunctions.getClass().getSimpleName() : "null");
-
-        if (jobFunctions != null) {
-            for (int i = 0; i < jobFunctions.size(); i++) {
-                String function = jobFunctions.get(i);
-                log.info("🔍 Job function {}: '{}' (type: {})", i, function,
-                    function != null ? function.getClass().getSimpleName() : "null");
-            }
-        }
-
-        // ✅ КРОК 1: Спочатку фільтрація за job functions
-        log.info("🔍 КРОК 1: Застосовуємо фільтрацію за job functions...");
+        log.info("🔍 Застосовуємо фільтри для job functions: {}", jobFunctions);
         
-        // ✅ КРОК 1: Послідовно застосовуємо ВСІ фільтри
-        log.info("🔍 КРОК 1: Застосування всіх job function фільтрів...");
         boolean anyFilterApplied = false;
         
         if (jobFunctions != null && !jobFunctions.isEmpty()) {
-            log.info("🔍 JobFunctions не пустий, починаємо застосування фільтрів...");
             for (String function : jobFunctions) {
-                log.info("🚀 Спроба застосування фільтра для: '{}'", function);
                 boolean filterApplied = pageInteractionService.clickJobFunctionFilter(driver, function);
-                log.info("🔍 Результат застосування фільтра '{}': {}", function, filterApplied);
                 
                 if (filterApplied) {
                     anyFilterApplied = true;
-                    log.info("✅ Фільтр '{}' успішно застосовано. Чекаємо на оновлення сторінки...", function);
-                    // Збільшена пауза, щоб інтерфейс встиг відреагувати на застосування фільтра
+                    log.info("✅ Фільтр '{}' застосовано", function);
                     try {
                         Thread.sleep(3000);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                    
-                    // Додаткова перевірка, чи фільтр дійсно застосовано
-                    log.info("🔍 Перевіряємо, чи фільтр '{}' дійсно застосовано...", function);
-                    try {
-                        Thread.sleep(2000);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
@@ -292,15 +266,11 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         }
 
         if (anyFilterApplied) {
-            log.info("✅ Всі фільтри застосовано. Даємо сторінці фінально завантажитись...");
             try {
-                Thread.sleep(5000); // Збільшена пауза після застосування всіх фільтрів
+                Thread.sleep(5000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            log.info("🔍 Сторінка готова для зчитування кількості вакансій...");
-        } else {
-            log.info("ℹ️ Жоден фільтр не було застосовано, продовжуємо без фільтрації.");
         }
 
         // ✅ КРОК 2: Отримуємо загальну кількість вакансій ПІСЛЯ застосування ВСІХ фільтрів
@@ -314,7 +284,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
 
         // ✅ КРОК 4: Тепер шукаємо всі картки вакансій
         log.info("🔍 КРОК 4: Шукаємо всі картки вакансій після завантаження...");
-        List<WebElement> jobCards = findJobCardsWithMultipleStrategies(driver);
+        List<WebElement> jobCards = pageInteractionService.findJobCardsWithMultipleStrategies(driver);
         List<Job> jobs = new ArrayList<>();
 
         log.info("📋 Found {} job cards to process", jobCards.size());
@@ -333,36 +303,16 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             try {
                 WebElement card = jobCards.get(i);
 
-                // Логуємо тільки перші 5 карток для діагностики
-                boolean isFirstCards = i < 5;
-                if (isFirstCards) {
-                    String cardText = card.getText();
-                    String preview = cardText.length() > 200 ?
-                        cardText.substring(0, 200) + "..." : cardText;
-                    log.info("🔍 Processing card {}: {}", i + 1, preview);
-                }
-
                 // ✅ КРОК 5: Пропускаємо фільтрацію за job functions - обробляємо всі картки
                 passedFunctionFilter++;
-
-                if (isFirstCards) {
-                    log.info("🔍 Card {} processing (no function filter)", i + 1);
-                }
 
                 // ✅ КРОК 6: Пошук URL (ДРУГИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
                 String jobPageUrl = pageInteractionService.findDirectJobUrl(card);
                 if (jobPageUrl == null) {
-                    if (isFirstCards) {
-                        log.info("🔍 Card {}: No URL found after passing function filter", i + 1);
-                    }
                     continue;
                 }
 
                 foundUrls++;
-
-                if (isFirstCards) {
-                    log.info("🔍 Card {}: URL found: {}", i + 1, jobPageUrl);
-                }
 
                 // ✅ КРОК 7: Збереження вакансії (всі проходять однакову обробку)
                 Job job = createJobFromCard(card, jobPageUrl, jobFunctions);
@@ -370,14 +320,13 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                     jobs.add(job);
                     if (jobPageUrl.startsWith(REQUIRED_PREFIX)) {
                         savedWithCompanyPrefix++;
-                        log.info("Card {} saved (with company prefix)", i + 1);
                     } else {
                         savedWithoutCompanyPrefix++;
-                        log.info("Card {} saved (without company prefix)", i + 1);
                     }
                 }
 
-                if (i % 10 == 0) {
+                // Логуємо прогрес рідше - кожні 50 карток
+                if ((i + 1) % 50 == 0) {
                     log.info("Processed {}/{} job cards", i + 1, jobCards.size());
                 }
 
@@ -396,16 +345,10 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
 
 
     private List<Job> scrapeJobsBasedOnPageType(WebDriver driver, List<String> jobFunctions) {
-        String currentUrl = driver.getCurrentUrl();
-        log.info("🔍 Current URL: {}", currentUrl);
-
-        if (currentUrl.contains("/companies/")) {
-            log.info("🎯 Detected job detail page, applying new filtering logic...");
-            return scrapeSingleJobFromDetailPage(driver, jobFunctions);
-        } else {
-            log.warn("⚠️ Unknown page type, trying default scraping with new logic...");
-            return scrapeJobsFromMainPage(driver, jobFunctions);
-        }
+        // ✅ СПРОЩЕНА ЛОГІКА: Використовуємо тільки головну сторінку
+        // Детальні сторінки та сторінки компаній майже не використовуються
+        log.info("🔍 Using main page scraping logic (most stable and efficient)");
+        return scrapeJobsFromMainPage(driver, jobFunctions);
     }
 
     private List<Job> scrapeSingleJobFromDetailPage(WebDriver driver, List<String> jobFunctions) {
@@ -554,8 +497,6 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
 
                 if (job != null) {
                     jobs.add(job);
-                    log.info("✅ Successfully scraped job with standard filtering: {}",
-                        positionName);
                 }
             }
 
@@ -566,46 +507,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         return jobs;
     }
 
-    /**
-     * ✅ ОНОВЛЕНИЙ МЕТОД: Скрапінг вакансій зі сторінки компанії з новою гібридною логікою
-     * НЕ ПЕРЕВІРЯЄМО теги для URL з префіксом компанії
-     * Використовує: 1) job functions → 2) URL → 3) префікс компанії → 4) збір тегів
-     */
-    private List<Job> scrapeJobsFromCompanyPage(WebDriver driver, List<String> jobFunctions) {
-        List<Job> jobs = new ArrayList<>();
 
-        try {
-            // Шукаємо картки вакансій на сторінці компанії
-            List<WebElement> jobCards = pageInteractionService.findJobCardsOnCompanyPage(driver);
-            log.info("🔍 Found {} job cards on company page", jobCards.size());
-
-            for (WebElement card : jobCards) {
-                try {
-                                    // ✅ КРОК 1: Пропускаємо фільтрацію за функціями - обробляємо всі картки
-
-                    // ✅ КРОК 2: Пошук URL (ДРУГИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
-                    String jobPageUrl = pageInteractionService.findDirectJobUrl(card);
-                    if (jobPageUrl == null) {
-                        continue;
-                    }
-
-                    // ✅ КРОК 3: Збереження вакансії (всі проходять однакову обробку)
-                    Job job = createJobFromCard(card, jobPageUrl, jobFunctions);
-                    if (job != null) {
-                        jobs.add(job);
-                    }
-
-                } catch (Exception e) {
-                    log.warn("⚠️ Error processing job card on company page: {}", e.getMessage());
-                }
-            }
-
-        } catch (Exception e) {
-            log.error("❌ Error scraping jobs from company page: {}", e.getMessage());
-        }
-
-        return jobs;
-    }
 
     /**
      * ✅ ОНОВЛЕНИЙ МЕТОД: Скрапінг вакансій з головної сторінки
@@ -618,19 +520,12 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         return scrapeAllJobsWithImprovedLogic(driver, jobFunctions);
     }
 
-    /**
-     * ✅ НОВИЙ МЕТОД: Знаходимо картки вакансій кількома стратегіями
-     */
-    private List<WebElement> findJobCardsWithMultipleStrategies(WebDriver driver) {
-        // ✅ ВИКОРИСТОВУЄМО PageInteractionService
-        return pageInteractionService.findJobCardsWithMultipleStrategies(driver);
-    }
+
 
 
 
     private Job createJobFromCard(WebElement card, String jobPageUrl, List<String> jobFunctions) {
         try {
-            log.debug("🔍 Creating Job object for URL: {}", jobPageUrl);
             String organizationTitle = dataExtractionService.extractCompanyName(card);
             String positionName = dataExtractionService.extractTitle(card);
             List<String> tags = dataExtractionService.extractTags(card);
@@ -642,33 +537,19 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             String defaultFunction = jobFunctions.isEmpty() ?
                 "Software Engineering" : jobFunctions.get(0);
 
-            log.info("📋 Job extracted: '{}' at '{}' | Location: '{}' | Tags: {} | Posted: {} | Logo: {} | Description: {}",
-                positionName, organizationTitle, location, tags,
-                postedDate != null ? postedDate.toEpochSecond(java.time.ZoneOffset.UTC) : "null",
-                logoUrl != null ? "Found" : "Not found",
-                description != null && !description.trim().isEmpty() ? "Found" : "Not found");
-
             // ✅ ВИПРАВЛЕНО: Використовуємо JobCreationService для створення Job з усіма даними
             Job job = jobCreationService.createJobWithAllData(
                 jobPageUrl, positionName, organizationTitle, logoUrl, location, tags, postedDate,
                 jobFunctions, description
             );
 
-            // Зберігаємо опис вакансії (тільки якщо це
-            // не заглушка)
+            // Зберігаємо опис вакансії (тільки якщо це не заглушка)
             if (job != null && description != null && !description.trim().isEmpty() &&
                 !description.equals("Job scraped from Techstars")) {
                 try {
-                    boolean descriptionSaved = descriptionIngestService.saveDescription(job,
-                        description);
-                    if (descriptionSaved) {
-                        log.info("✅ Successfully saved description for job ID: {}", job.getId());
-                    } else {
-                        log.warn("⚠️ Failed to save description for job ID: {}", job.getId());
-                    }
+                    descriptionIngestService.saveDescription(job, description);
                 } catch (Exception e) {
-                    log.error("❌ Error saving description for job ID: {}, error: {}",
-                        job.getId(), e.getMessage(), e);
+                    log.warn("⚠️ Error saving description for job ID: {}: {}", job.getId(), e.getMessage());
                 }
             }
 
@@ -684,16 +565,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
     private void printUpdatedFinalReport(int totalCards, int passedFunctionFilter,
                                          int foundUrls, int finalJobs, int savedWithCompanyPrefix,
                                          int savedWithoutCompanyPrefix, List<String> functions) {
-        log.info("📊 ОНОВЛЕНИЙ ЗВІТ ПРО ФІЛЬТРАЦІЮ:");
-        log.info("   • Всього карток: {}", totalCards);
-        log.info("   • Пройшли фільтр функцій: {}", passedFunctionFilter);
-        log.info("   • Знайдено URL: {}", foundUrls);
-        log.info("   • Збережено з префіксом компанії: {}",
-            savedWithCompanyPrefix);
-        log.info("   • Збережено без префіксу компанії (тільки фільтр функцій): {}",
-            savedWithoutCompanyPrefix);
-        log.info("   • Фінальних вакансій: {}", finalJobs);
-        log.info("   • Застосовані функції: {}", functions);
-        log.info("🎯 Результат: {} з {} карток успішно оброблено", finalJobs, totalCards);
+        log.info("📊 ЗВІТ: {} з {} карток оброблено | URL: {} | Збережено: {} (з префіксом: {}, без префіксу: {}) | Функції: {}",
+            finalJobs, totalCards, foundUrls, finalJobs, savedWithCompanyPrefix, savedWithoutCompanyPrefix, functions);
     }
 }
