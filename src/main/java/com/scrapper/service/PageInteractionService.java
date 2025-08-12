@@ -138,6 +138,22 @@ public class PageInteractionService {
     }
 
     /**
+     * Закриває випадаюче меню job function
+     */
+    public void closeJobFunctionDropdown(WebDriver driver) {
+        log.info("🔍 Attempting to close job function dropdown...");
+        try {
+            // Клікаємо поза межами випадаючого меню, щоб закрити його
+            WebElement body = driver.findElement(By.tagName("body"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", body);
+            sleep(1000);
+            log.info("✅ Job function dropdown closed successfully");
+        } catch (Exception e) {
+            log.warn("⚠️ Could not close job function dropdown: {}", e.getMessage());
+        }
+    }
+
+    /**
      * Перевіряє, чи можна натиснути кнопку
      */
     private boolean isButtonClickable(WebElement button) {
@@ -453,8 +469,41 @@ public class PageInteractionService {
             log.info("✅ Found 'Job function' button, clicking to open dropdown...");
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", jobFunctionButton);
             Thread.sleep(500);
-            jobFunctionButton.click();
-            Thread.sleep(2000); // Чекаємо відкриття dropdown
+            
+            // Додаткова перевірка, чи кнопка клікабельна
+            if (!jobFunctionButton.isEnabled() || !jobFunctionButton.isDisplayed()) {
+                log.warn("⚠️ Job function button is not clickable, waiting...");
+                Thread.sleep(2000);
+            }
+            
+            // Спробуємо клікнути кілька разів, якщо потрібно
+            boolean dropdownOpened = false;
+            for (int attempt = 1; attempt <= 3; attempt++) {
+                log.info("🔍 Attempt {} to click job function button...", attempt);
+                try {
+                    jobFunctionButton.click();
+                    Thread.sleep(2000); // Чекаємо відкриття dropdown
+                    
+                    // Перевіряємо, чи dropdown дійсно відкрився
+                    List<WebElement> dropdownOptions = driver.findElements(By.cssSelector("div.sc-beqWaB.dfbUjw"));
+                    if (!dropdownOptions.isEmpty()) {
+                        log.info("✅ Dropdown opened successfully on attempt {}", attempt);
+                        dropdownOpened = true;
+                        break;
+                    } else {
+                        log.warn("⚠️ Dropdown not opened on attempt {}, trying again...", attempt);
+                        Thread.sleep(1000);
+                    }
+                } catch (Exception e) {
+                    log.warn("⚠️ Error clicking job function button on attempt {}: {}", attempt, e.getMessage());
+                    Thread.sleep(1000);
+                }
+            }
+            
+            if (!dropdownOpened) {
+                log.error("❌ Failed to open dropdown after 3 attempts");
+                return false;
+            }
             
             // КРОК 2: Знаходимо та натискаємо на потрібну опцію в dropdown
             WebElement jobFunctionOption = findJobFunctionOption(driver, jobFunction);
@@ -468,6 +517,14 @@ public class PageInteractionService {
             Thread.sleep(500);
             jobFunctionOption.click();
             Thread.sleep(2000); // Чекаємо застосування фільтра
+            
+            // КРОК 3: Закриваємо випадаюче меню після застосування фільтра
+            log.info("🔍 Closing dropdown after applying filter '{}'...", jobFunction);
+            closeJobFunctionDropdown(driver);
+            
+            // Додаткова пауза після закриття меню
+            log.info("🔍 Waiting after closing dropdown...");
+            Thread.sleep(2000);
             
             log.info("✅ Successfully applied job function filter: '{}'", jobFunction);
             return true;
@@ -527,11 +584,17 @@ public class PageInteractionService {
      * Знаходить опцію job function в dropdown
      */
     private WebElement findJobFunctionOption(WebDriver driver, String jobFunction) {
+        // Діагностика: виводимо всі доступні опції
+        log.info("🔍 Looking for job function option: '{}'", jobFunction);
+        
         // 1. Спочатку спробуємо точний селектор
         try {
             List<WebElement> elements = driver.findElements(By.cssSelector("div.sc-beqWaB.dfbUjw"));
+            log.info("🔍 Found {} elements with selector 'div.sc-beqWaB.dfbUjw'", elements.size());
+            
             for (WebElement element : elements) {
                 String elementText = element.getText();
+                log.info("🔍 Available option: '{}'", elementText);
                 if (elementText.equalsIgnoreCase(jobFunction) && element.isDisplayed()) {
                     return element;
                 }
@@ -579,6 +642,62 @@ public class PageInteractionService {
             } catch (Exception e) {
                 log.debug("⚠️ Selector '{}' failed: {}", selector, e.getMessage());
             }
+        }
+        
+        // 5. Якщо не знайдено, спробуємо прокрутити dropdown
+        log.info("🔍 Option '{}' not found, attempting to scroll dropdown...", jobFunction);
+        try {
+            // Знаходимо dropdown контейнер (спробуємо різні селектори)
+            WebElement dropdownContainer = null;
+            String[] containerSelectors = {
+                "div[role='listbox']",
+                "div[class*='dropdown']",
+                "div[class*='menu']",
+                "div[class*='list']",
+                "div.sc-beqWaB",
+                "ul[role='listbox']",
+                "ul[class*='dropdown']"
+            };
+            
+            for (String selector : containerSelectors) {
+                try {
+                    List<WebElement> containers = driver.findElements(By.cssSelector(selector));
+                    for (WebElement container : containers) {
+                        if (container.isDisplayed() && container.getSize().height > 100) {
+                            dropdownContainer = container;
+                            log.info("🔍 Found dropdown container with selector: {}", selector);
+                            break;
+                        }
+                    }
+                    if (dropdownContainer != null) break;
+                } catch (Exception e) {
+                    log.debug("⚠️ Container selector '{}' failed: {}", selector, e.getMessage());
+                }
+            }
+            
+            if (dropdownContainer != null) {
+                log.info("🔍 Found dropdown container, scrolling down...");
+                // Прокручуємо dropdown вниз
+                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollTop = arguments[0].scrollHeight;", dropdownContainer);
+                Thread.sleep(1000);
+                
+                // Знову шукаємо опцію після прокрутки
+                List<WebElement> elements = driver.findElements(By.cssSelector("div.sc-beqWaB.dfbUjw"));
+                log.info("🔍 After scrolling, found {} elements", elements.size());
+                
+                for (WebElement element : elements) {
+                    String elementText = element.getText();
+                    log.info("🔍 Checking element after scroll: '{}'", elementText);
+                    if (elementText.equalsIgnoreCase(jobFunction) && element.isDisplayed()) {
+                        log.info("✅ Found job function option after scrolling: '{}'", elementText);
+                        return element;
+                    }
+                }
+            } else {
+                log.info("🔍 Could not find dropdown container for scrolling");
+            }
+        } catch (Exception e) {
+            log.debug("⚠️ Scrolling dropdown failed: {}", e.getMessage());
         }
         
         return null;

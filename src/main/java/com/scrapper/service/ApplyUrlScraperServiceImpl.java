@@ -269,60 +269,60 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         // ✅ КРОК 1: Спочатку фільтрація за job functions
         log.info("🔍 КРОК 1: Застосовуємо фільтрацію за job functions...");
         
-        // Натискаємо на фільтр IT якщо він є
-        boolean filterApplied = false;
-        log.info("🔍 Перевіряємо jobFunctions: {}", jobFunctions);
+        // ✅ КРОК 1: Послідовно застосовуємо ВСІ фільтри
+        log.info("🔍 КРОК 1: Застосування всіх job function фільтрів...");
+        boolean anyFilterApplied = false;
+        
         if (jobFunctions != null && !jobFunctions.isEmpty()) {
             log.info("🔍 JobFunctions не пустий, починаємо застосування фільтрів...");
             for (String function : jobFunctions) {
-                log.info("🔍 Спроба застосування фільтра для: '{}'", function);
-                filterApplied = pageInteractionService.clickJobFunctionFilter(driver, function);
+                log.info("🚀 Спроба застосування фільтра для: '{}'", function);
+                boolean filterApplied = pageInteractionService.clickJobFunctionFilter(driver, function);
                 log.info("🔍 Результат застосування фільтра '{}': {}", function, filterApplied);
+                
                 if (filterApplied) {
-                    log.info("✅ Job function filter '{}' applied successfully", function);
-                    log.info("🔍 Перевіряємо, чи дійсно фільтр застосовано - чекаємо 3 секунди...");
+                    anyFilterApplied = true;
+                    log.info("✅ Фільтр '{}' успішно застосовано. Чекаємо на оновлення сторінки...", function);
+                    // Збільшена пауза, щоб інтерфейс встиг відреагувати на застосування фільтра
                     try {
                         Thread.sleep(3000);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
                     
-                    // Після успішного застосування фільтра отримуємо загальну кількість вакансій
-                    log.info("🔍 КРОК 2: Отримуємо загальну кількість вакансій після застосування фільтра...");
-                    log.info("🔍 Чекаємо 3 секунди після застосування фільтра...");
+                    // Додаткова перевірка, чи фільтр дійсно застосовано
+                    log.info("🔍 Перевіряємо, чи фільтр '{}' дійсно застосовано...", function);
                     try {
-                        Thread.sleep(3000); // Чекаємо, щоб сторінка оновилася
+                        Thread.sleep(2000);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
-                    
-                    // Отримуємо загальну кількість вакансій
-                    int totalJobsExpected = pageInteractionService.getTotalJobCountFromTextAfterFiltering(driver);
-                    
-                    // Завантажуємо всі доступні вакансії
-                    log.info("🔍 КРОК 3: Завантажуємо всі доступні вакансії (очікується: {})...", totalJobsExpected);
-                    pageInteractionService.loadAllAvailableJobs(driver, totalJobsExpected);
-                    log.info("🔍 Завантаження вакансій завершено");
-                    
-                    break; // Застосовуємо тільки перший фільтр
+                } else {
+                    log.warn("⚠️ Не вдалося застосувати фільтр '{}'", function);
                 }
             }
         }
 
-        // ✅ КРОК 2-3: Виконуємо тільки якщо фільтр НЕ застосовано
-        log.info("🔍 Фінальна перевірка filterApplied: {}", filterApplied);
-        if (!filterApplied) {
-            log.info("🔍 КРОК 2: Отримуємо загальну кількість вакансій (фільтр не застосовано)...");
-            
-            // Отримуємо загальну кількість вакансій
-            int totalJobsExpected = pageInteractionService.getTotalJobCountFromTextAfterFiltering(driver);
-            
-            log.info("🔍 КРОК 3: Завантажуємо всі доступні вакансії (очікується: {})...", totalJobsExpected);
-            pageInteractionService.loadAllAvailableJobs(driver, totalJobsExpected);
-            log.info("🔍 Завантаження вакансій завершено");
+        if (anyFilterApplied) {
+            log.info("✅ Всі фільтри застосовано. Даємо сторінці фінально завантажитись...");
+            try {
+                Thread.sleep(5000); // Збільшена пауза після застосування всіх фільтрів
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            log.info("🔍 Сторінка готова для зчитування кількості вакансій...");
         } else {
-            log.info("🔍 Фільтр застосовано, пропускаємо загальну логіку завантаження");
+            log.info("ℹ️ Жоден фільтр не було застосовано, продовжуємо без фільтрації.");
         }
+
+        // ✅ КРОК 2: Отримуємо загальну кількість вакансій ПІСЛЯ застосування ВСІХ фільтрів
+        log.info("🔍 КРОК 2: Отримуємо загальну кількість вакансій...");
+        int totalJobsExpected = pageInteractionService.getTotalJobCountFromTextAfterFiltering(driver);
+
+        // ✅ КРОК 3: Завантажуємо всі доступні вакансії
+        log.info("🔍 КРОК 3: Завантажуємо всі доступні вакансії (очікується: {})...", totalJobsExpected);
+        pageInteractionService.loadAllAvailableJobs(driver, totalJobsExpected);
+        log.info("🔍 Завантаження вакансій завершено");
 
         // ✅ КРОК 4: Тепер шукаємо всі картки вакансій
         log.info("🔍 КРОК 4: Шукаємо всі картки вакансій після завантаження...");
@@ -397,11 +397,15 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                 log.warn("Error scraping job card {}: {}", i + 1, e.getMessage());
             }
         }
-        //Розширений звіт з новою логікою
-        printUpdatedFinalReport(jobCards.size(), passedFunctionFilter, foundUrls,
+        // Оновлений фінальний звіт
+        printUpdatedFinalReport(jobCards.size(), jobCards.size(), jobs.size(), 
             jobs.size(), savedWithCompanyPrefix, savedWithoutCompanyPrefix, jobFunctions);
+
+        log.info("🎯 Job scraping completed with MULTIPLE FILTERS LOGIC. Created {} Job objects with real data", jobs.size());
         return jobs;
     }
+
+
 
     private List<Job> scrapeJobsBasedOnPageType(WebDriver driver, List<String> jobFunctions) {
         String currentUrl = driver.getCurrentUrl();
