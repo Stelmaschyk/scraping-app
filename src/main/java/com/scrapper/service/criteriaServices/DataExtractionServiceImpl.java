@@ -59,40 +59,6 @@ public class DataExtractionServiceImpl implements DataExtractionService {
         }
     }
 
-    /**
-     * Отримує текст елемента за селектором (для WebDriver)
-     */
-    private String getElementText(WebDriver driver, String selector) {
-        try {
-            log.debug("🔍 Searching for element with selector: '{}'", selector);
-            WebElement element = driver.findElement(By.cssSelector(selector));
-            String text = element.getText();
-            log.debug("🔍 Found element with selector '{}', text: '{}'", selector, text);
-            return text;
-        } catch (Exception e) {
-            log.debug("⚠️ Element not found with selector '{}': {}", selector, e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Отримує атрибут елемента за селектором (для WebDriver)
-     */
-    private String getElementAttribute(WebDriver driver, String selector, String attribute) {
-        try {
-            log.debug("🔍 Searching for element with selector: '{}' and attribute: '{}'", selector, attribute);
-            WebElement element = driver.findElement(By.cssSelector(selector));
-            String value = element.getAttribute(attribute);
-            log.debug("🔍 Found element with selector '{}', attribute '{}': '{}'", selector, attribute, value);
-            return value;
-        } catch (Exception e) {
-            log.debug("⚠️ Element not found with selector '{}': {}", selector, e.getMessage());
-            return null;
-        }
-    }
-
-    // ✅ РЕАЛІЗАЦІЯ МЕТОДІВ ІНТЕРФЕЙСУ
-
     @Override
     public List<String> extractTags(WebElement source) {
         List<String> tags = new ArrayList<>();
@@ -116,31 +82,6 @@ public class DataExtractionServiceImpl implements DataExtractionService {
         }
         
         log.debug("🏷️ Extracted {} tags from element", tags.size());
-        return tags;
-    }
-
-    @Override
-    public List<String> extractTags(WebDriver source) {
-        List<String> tags = new ArrayList<>();
-        try {
-            for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
-                if (selector.contains("data-testid=tag")) {
-                    List<WebElement> elements = source.findElements(By.cssSelector(selector));
-                    for (WebElement element : elements) {
-                        String tag = element.getText().trim();
-                        if (!tag.isEmpty()) {
-                            tags.add(tag);
-                        }
-                    }
-                    if (!tags.isEmpty()) {
-                        log.info("✅ Extracted {} tags from detail page: {}", tags.size(), tags);
-                        return tags;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Error extracting tags from detail page: {}", e.getMessage());
-        }
         return tags;
     }
 
@@ -172,37 +113,7 @@ public class DataExtractionServiceImpl implements DataExtractionService {
         return null;
     }
 
-    @Override
-    public String extractLocation(WebDriver source) {
-        try {
-            // Спочатку шукаємо в meta тегах
-            List<WebElement> metaElements = source.findElements(By.cssSelector("meta[itemprop='address']"));
-            if (!metaElements.isEmpty()) {
-                String location = metaElements.get(0).getAttribute("content");
-                if (location != null && !location.trim().isEmpty()) {
-                    log.info("✅ Extracted location from meta tag: {}", location);
-                    return location.trim();
-                }
-            }
-            
-            // Потім шукаємо в div елементах
-            for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
-                if (selector.contains("sc-beqWaB")) {
-                    List<WebElement> elements = source.findElements(By.cssSelector(selector));
-                    for (WebElement element : elements) {
-                        String text = element.getText().trim();
-                        if (text.contains(",") && (text.contains("USA") || text.contains("Remote") || text.contains("India"))) {
-                            log.info("✅ Extracted location from div: {}", text);
-                            return text;
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Error extracting location from detail page: {}", e.getMessage());
-        }
-        return null;
-    }
+
 
     @Override
     public LocalDateTime extractPostedDate(WebElement source) {
@@ -230,31 +141,7 @@ public class DataExtractionServiceImpl implements DataExtractionService {
         return null;
     }
 
-    @Override
-    public LocalDateTime extractPostedDate(WebDriver source) {
-        try {
-            // Шукаємо тільки в meta тегах з itemprop="datePosted"
-            List<WebElement> metaElements = source.findElements(By.cssSelector("meta[itemprop='datePosted']"));
-            if (!metaElements.isEmpty()) {
-                String dateStr = metaElements.get(0).getAttribute("content");
-                if (dateStr != null && !dateStr.trim().isEmpty()) {
-                    // ✅ ВИПРАВЛЕНО: Використовуємо DateParsingService для парсингу дати
-                    LocalDateTime date = dateParsingService.parseMetaDate(dateStr);
-                    if (date != null) {
-                        log.debug("✅ Extracted posted date from detail page meta tag: '{}' -> {} (Unix: {})", 
-                                dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
-                        return date;
-                    }
-                }
-            }
-            
-        } catch (Exception e) {
-            log.debug("⚠️ Error extracting posted date from detail page: {}", e.getMessage());
-        }
-        
-        log.debug("📅 No posted date found in detail page meta[itemprop='datePosted']");
-        return null;
-    }
+
 
     @Override
     public String extractLogoUrl(WebElement source) {
@@ -315,24 +202,7 @@ public class DataExtractionServiceImpl implements DataExtractionService {
         return null;
     }
 
-    @Override
-    public String extractCompanyName(WebDriver source) {
-        try {
-            for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
-                if (selector.contains("itemprop='name'")) {
-                    List<WebElement> elements = source.findElements(By.cssSelector(selector));
-                    if (!elements.isEmpty()) {
-                        String companyName = elements.get(0).getText().trim();
-                        log.info("✅ Extracted company name from detail page: {}", companyName);
-                        return companyName;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Error extracting company name from detail page: {}", e.getMessage());
-        }
-        return null;
-    }
+
 
     @Override
     public String extractTitle(WebElement source) {
@@ -432,24 +302,7 @@ public class DataExtractionServiceImpl implements DataExtractionService {
         return "Unknown Position";
     }
 
-    @Override
-    public String extractTitle(WebDriver source) {
-        try {
-            for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
-                if (selector.contains("itemprop='title'")) {
-                    List<WebElement> elements = source.findElements(By.cssSelector(selector));
-                    if (!elements.isEmpty()) {
-                        String title = elements.get(0).getText().trim();
-                        log.info("✅ Extracted title from detail page: {}", title);
-                        return title;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Error extracting title from detail page: {}", e.getMessage());
-        }
-        return null;
-    }
+
 
     @Override
     public String extractDescription(WebElement source) {
@@ -505,51 +358,5 @@ public class DataExtractionServiceImpl implements DataExtractionService {
         return null;
     }
 
-    @Override
-    public String extractDescription(WebDriver source) {
-        try {
-            // ✅ Шукаємо опис за селекторами з ScrapingSelectors
-            for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
-                if (selector.contains("description") || selector.contains("content")) {
-                    List<WebElement> elements = source.findElements(By.cssSelector(selector));
-                    for (WebElement element : elements) {
-                        String text = element.getText();
-                        String content = element.getAttribute("content");
-                        
-                        // Перевіряємо content атрибут
-                        if (content != null && !content.trim().isEmpty() && content.length() < 1000) {
-                            if (!content.contains(" at ") && !content.contains(" - ")) {
-                                log.info("✅ Extracted description from detail page using selector '{}': '{}'", selector, content);
-                                return content.trim();
-                            }
-                        }
-                        
-                        // Перевіряємо текст елемента
-                        if (text != null && !text.trim().isEmpty() && text.length() < 1000) {
-                            if (!text.contains(" at ") && !text.contains(" - ")) {
-                                log.info("✅ Extracted description from detail page using selector '{}': '{}'", selector, text);
-                                return text.trim();
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // ✅ Шукаємо опис в meta тегах
-            List<WebElement> metaElements = source.findElements(By.cssSelector("meta[name='description'], meta[property='og:description']"));
-            for (WebElement meta : metaElements) {
-                String content = meta.getAttribute("content");
-                if (content != null && !content.trim().isEmpty() && content.length() < 1000) {
-                    log.info("✅ Extracted description from detail page meta tag: '{}'", content);
-                    return content.trim();
-                }
-            }
-            
-        } catch (Exception e) {
-            log.warn("⚠️ Error extracting description from detail page: {}", e.getMessage());
-        }
-        
-        log.debug("📝 No description found on detail page");
-        return null;
-    }
+
 }

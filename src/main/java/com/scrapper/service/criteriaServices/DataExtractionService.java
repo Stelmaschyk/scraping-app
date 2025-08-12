@@ -14,22 +14,19 @@ import java.util.List;
 public interface DataExtractionService {
     
     /**
-     * Витягує теги з джерела (картка або детальна сторінка)
+     * Витягує теги з картки вакансії
      */
     List<String> extractTags(WebElement source);
-    List<String> extractTags(WebDriver source);
     
     /**
-     * Витягує локацію з джерела (картка або детальна сторінка)
+     * Витягує локацію з картки вакансії
      */
     String extractLocation(WebElement source);
-    String extractLocation(WebDriver source);
     
     /**
-     * Витягує дату публікації з джерела (картка або детальна сторінка)
+     * Витягує дату публікації з картки вакансії
      */
     LocalDateTime extractPostedDate(WebElement source);
-    LocalDateTime extractPostedDate(WebDriver source);
     
     /**
      * Витягує URL логотипу з картки вакансії
@@ -37,14 +34,17 @@ public interface DataExtractionService {
     String extractLogoUrl(WebElement source);
 
     /**
-     * Витягує назву компанії з джерела (картка або детальна сторінка)
+     * Витягує назву компанії з картки вакансії
      */
     String extractCompanyName(WebElement source);
-    String extractCompanyName(WebDriver source);
 
+    /**
+     * Витягує заголовок вакансії з картки
+     */
     String extractTitle(WebElement source);
-    String extractTitle(WebDriver source);
 
+    /**
+     * Витягує опис вакансії з картки
+     */
     String extractDescription(WebElement source);
-    String extractDescription(WebDriver source);
 }

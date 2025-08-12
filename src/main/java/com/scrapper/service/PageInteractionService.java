@@ -41,65 +41,6 @@ public class PageInteractionService {
     private static final String JOB_CARD_SELECTOR = ScrapingSelectors.JOB_CARD[0];
 
     /**
-     * Гібридний підхід: Load More + прокрутка
-     */
-    public boolean loadContentWithHybridApproach(WebDriver driver, List<String> jobFunctions) {
-        log.info("🔄 Starting content loading...");
-        
-        try {
-            // Крок 1: Load More кнопка (один раз)
-            clickLoadMoreButtonOnce(driver);
-            
-            // Крок 2: Прокрутка
-            scrollToLoadMore(driver, jobFunctions);
-            
-            return true;
-            
-        } catch (Exception e) {
-            log.error("❌ Error during content loading: {}", e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Натискає кнопку Load More один раз (ОНОВЛЕНА, БІЛЬШ НАДІЙНА ВЕРСІЯ)
-     */
-    private boolean clickLoadMoreButtonOnce(WebDriver driver) {
-        log.info("🔘 Attempting to click Load More button...");
-        
-        try {
-            WebElement loadMoreButton = findLoadMoreButton(driver);
-            
-            if (loadMoreButton == null) {
-                log.info("ℹ️ Load More button not found, skipping");
-                return false;
-            }
-
-            // КРОК 1: Використовуємо WebDriverWait для очікування клікабельності
-            // Чекаємо до 10 секунд, поки кнопка не стане доступною для кліку
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-            wait.until(ExpectedConditions.elementToBeClickable(loadMoreButton));
-            
-            log.info("✅ Load More button is clickable. Attempting to click via JavaScript.");
-
-            // КРОК 2: Використовуємо JavascriptExecutor для надійного кліку
-            // Цей метод спрацює, навіть якщо кнопка чимось перекрита
-            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", loadMoreButton); // Прокручуємо до кнопки
-            sleep(500); // Невелика пауза після скролу
-            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loadMoreButton);
-            
-            sleep(2000); // Залишаємо затримку, щоб контент встиг завантажитись
-            
-            log.info("✅ Load More button successfully clicked via JavaScript.");
-            return true;
-            
-        } catch (Exception e) {
-            log.warn("⚠️ Error clicking Load More button: {}", e.getMessage());
-            return false;
-        }
-    }
-
-    /**
      * Знаходить кнопку Load More
      */
     private WebElement findLoadMoreButton(WebDriver driver) {
@@ -126,7 +67,7 @@ public class PageInteractionService {
                 if (!buttons.isEmpty()) {
                     WebElement button = buttons.get(0);
                     if (button.isDisplayed() && button.isEnabled()) {
-                        log.info("✅ Load More button found with selector: '{}'", selector);
+                        log.debug("✅ Load More button found with selector: '{}'", selector);
                         return button;
                     }
                 }
@@ -136,6 +77,13 @@ public class PageInteractionService {
         }
         return null;
     }
+
+
+
+
+
+
+
 
     /**
      * Закриває випадаюче меню job function
@@ -234,43 +182,7 @@ public class PageInteractionService {
         }
     }
 
-    /**
-     * Спробуємо альтернативні селектори
-     */
-    public void tryAlternativeSelectors(WebDriver driver) {
-        log.info("🔍 Testing alternative selectors...");
-        
-        // Отримуємо HTML сторінки для аналізу
-        String pageSource = driver.getPageSource();
-        log.info("📄 Page source length: {} characters", pageSource.length());
-        
-        // ОПТИМІЗОВАНО: Залишено тільки працюючі селектори
-        String[] alternativeSelectors = {
-            "div[class*='job']",
-            "div[class*='position']", 
-            "div[class*='vacancy']",
-            "div[class*='card']",
-            "div[class*='item']",
-            "div[class*='listing']",
-            "div[class*='posting']",
-            ".job-card",
-            ".position-card",
-            ".vacancy-card",
-            ".job-item",
-            ".position-item"
-        };
-        
-        for (String selector : alternativeSelectors) {
-            try {
-                List<WebElement> elements = driver.findElements(By.cssSelector(selector));
-                if (!elements.isEmpty()) {
-                    log.info("✅ Alternative selector '{}' found {} elements", selector, elements.size());
-                }
-            } catch (Exception e) {
-                log.debug("⚠️ Alternative selector '{}' failed: {}", selector, e.getMessage());
-            }
-        }
-    }
+
 
     /**
      * Пошук карток вакансій з кількома стратегіями
@@ -449,7 +361,7 @@ public class PageInteractionService {
             // Спробуємо клікнути кілька разів, якщо потрібно
             boolean dropdownOpened = false;
             for (int attempt = 1; attempt <= 3; attempt++) {
-                log.info("🔍 Attempt {} to click job function button...", attempt);
+                log.debug("🔍 Attempt {} to click job function button...", attempt);
                 try {
                     jobFunctionButton.click();
                     Thread.sleep(2000); // Чекаємо відкриття dropdown
@@ -457,11 +369,11 @@ public class PageInteractionService {
                     // Перевіряємо, чи dropdown дійсно відкрився
                     List<WebElement> dropdownOptions = driver.findElements(By.cssSelector("div.sc-beqWaB.dfbUjw"));
                     if (!dropdownOptions.isEmpty()) {
-                        log.info("✅ Dropdown opened successfully on attempt {}", attempt);
+                        log.debug("✅ Dropdown opened successfully on attempt {}", attempt);
                         dropdownOpened = true;
                         break;
                     } else {
-                        log.warn("⚠️ Dropdown not opened on attempt {}, trying again...", attempt);
+                        log.debug("⚠️ Dropdown not opened on attempt {}, trying again...", attempt);
                         Thread.sleep(1000);
                     }
                 } catch (Exception e) {
@@ -482,21 +394,21 @@ public class PageInteractionService {
                 return false;
             }
             
-            log.info("✅ Found job function option: '{}', clicking...", jobFunctionOption.getText());
+            log.debug("✅ Found job function option: '{}', clicking...", jobFunctionOption.getText());
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", jobFunctionOption);
             Thread.sleep(500);
             jobFunctionOption.click();
             Thread.sleep(2000); // Чекаємо застосування фільтра
             
             // КРОК 3: Закриваємо випадаюче меню після застосування фільтра
-            log.info("🔍 Closing dropdown after applying filter '{}'...", jobFunction);
+            log.debug("🔍 Closing dropdown after applying filter '{}'...", jobFunction);
             closeJobFunctionDropdown(driver);
             
             // Додаткова пауза після закриття меню
-            log.info("🔍 Waiting after closing dropdown...");
+            log.debug("🔍 Waiting after closing dropdown...");
             Thread.sleep(2000);
             
-            log.info("✅ Successfully applied job function filter: '{}'", jobFunction);
+            log.debug("✅ Successfully applied job function filter: '{}'", jobFunction);
             return true;
             
         } catch (Exception e) {
@@ -673,221 +585,9 @@ public class PageInteractionService {
         return null;
     }
 
-    /**
-     * Натискає кнопку Load More (повна версія)
-     */
-    public void clickLoadMoreButton(WebDriver driver) {
-        log.info("🔄 Looking for Load More button...");
-        
-        // Чекаємо трохи, щоб сторінка завантажилася після застосування фільтра
-        sleep(3000);
-        
-        // Різні варіанти кнопки "Load More"
-        String[] loadMoreSelectors = {
-            LOAD_MORE_SELECTOR,
-            "button:contains('Load More')",
-            "button:contains('Show More')",
-            "button:contains('Load')",
-            "button:contains('more')",
-            "a:contains('Load More')",
-            "a:contains('Show More')",
-            "[data-testid*='load-more']",
-            "[data-testid*='show-more']",
-            "[data-testid*='load']",
-            "[data-testid*='more']",
-            ".load-more",
-            ".show-more",
-            "button[class*='load']",
-            "button[class*='more']",
-            "a[class*='load']",
-            "a[class*='more']",
-            "div[class*='load']",
-            "div[class*='more']",
-            "span[class*='load']",
-            "span[class*='more']"
-        };
-        
-        // Крок 1: Спробуємо CSS селектори
-        for (String selector : loadMoreSelectors) {
-            try {
-                List<WebElement> buttons = driver.findElements(By.cssSelector(selector));
-                log.info("🔍 Selector '{}' found {} elements", selector, buttons.size());
-                
-                for (WebElement button : buttons) {
-                    try {
-                        boolean isDisplayed = button.isDisplayed();
-                        boolean isEnabled = button.isEnabled();
-                        String buttonText = button.getText();
-                        String buttonDataTestId = button.getAttribute("data-testid");
-                        String buttonDataLoading = button.getAttribute("data-loading");
-                        
-                        log.info("🔍 Button: text='{}', data-testid='{}', data-loading='{}', displayed={}, enabled={}", 
-                                buttonText, buttonDataTestId, buttonDataLoading, isDisplayed, isEnabled);
-                        
-                        if (isDisplayed && isEnabled) {
-                            log.info("✅ Load More button found with selector '{}': '{}'", selector, buttonText);
-                            
-                            try {
-                                // КРОК 1: Використовуємо WebDriverWait для очікування клікабельності
-                                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-                                wait.until(ExpectedConditions.elementToBeClickable(button));
-                                
-                                // КРОК 2: Скролимо до кнопки та клікаємо через JavaScript
-                                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", button);
-                                sleep(500);
-                                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", button);
-                                sleep(scrollDelay);
-                                log.info("✅ Load More button clicked successfully via JavaScript");
-                                return;
-                            } catch (Exception e) {
-                                log.warn("⚠️ JavaScript click failed, trying regular click: {}", e.getMessage());
-                                // Fallback до звичайного кліку
-                                button.click();
-                                sleep(scrollDelay);
-                                log.info("✅ Load More button clicked successfully via regular click");
-                                return;
-                            }
-                        }
-                    } catch (Exception e) {
-                        log.debug("⚠️ Error checking button: {}", e.getMessage());
-                    }
-                }
-            } catch (Exception e) {
-                log.debug("⚠️ Selector '{}' failed: {}", selector, e.getMessage());
-            }
-        }
-        
-        // Крок 2: Спробуємо XPath селектори
-        String[] xpathSelectors = {
-            "//button[contains(text(), 'Load More')]",
-            "//button[contains(text(), 'Show More')]",
-            "//button[contains(text(), 'Load')]",
-            "//button[contains(text(), 'more')]",
-            "//a[contains(text(), 'Load More')]",
-            "//a[contains(text(), 'Show More')]",
-            "//div[contains(text(), 'Load More')]",
-            "//div[contains(text(), 'Show More')]",
-            "//span[contains(text(), 'Load More')]",
-            "//span[contains(text(), 'Show More')]"
-        };
-        
-        for (String xpathSelector : xpathSelectors) {
-            try {
-                List<WebElement> buttons = driver.findElements(By.xpath(xpathSelector));
-                for (WebElement button : buttons) {
-                    if (button.isDisplayed() && button.isEnabled()) {
-                        String buttonText = button.getText();
-                        log.info("✅ Load More button found with XPath '{}': '{}'", xpathSelector, buttonText);
-                        
-                        try {
-                            // КРОК 1: Використовуємо WebDriverWait для очікування клікабельності
-                            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-                            wait.until(ExpectedConditions.elementToBeClickable(button));
-                            
-                            // КРОК 2: Скролимо до кнопки та клікаємо через JavaScript
-                            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", button);
-                            sleep(500);
-                            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", button);
-                            sleep(scrollDelay);
-                            log.info("✅ Load More button clicked successfully via JavaScript (XPath)");
-                            return;
-                        } catch (Exception e) {
-                            log.warn("⚠️ JavaScript click failed for XPath, trying regular click: {}", e.getMessage());
-                            // Fallback до звичайного кліку
-                            button.click();
-                            sleep(scrollDelay);
-                            log.info("✅ Load More button clicked successfully via regular click (XPath)");
-                            return;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                log.debug("⚠️ XPath selector '{}' failed: {}", xpathSelector, e.getMessage());
-            }
-        }
-        
-        // Крок 3: Спробуємо знайти кнопку за текстом серед всіх елементів
-        try {
-            List<WebElement> allElements = driver.findElements(By.cssSelector("button, a, div, span"));
-            for (WebElement element : allElements) {
-                try {
-                    String elementText = element.getText().toLowerCase();
-                    if ((elementText.contains("load") || elementText.contains("more") || elementText.contains("show")) 
-                        && element.isDisplayed() && element.isEnabled()) {
-                        
-                        log.info("✅ Load More button found by text: '{}'", element.getText());
-                        
-                        try {
-                            // КРОК 1: Використовуємо WebDriverWait для очікування клікабельності
-                            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-                            wait.until(ExpectedConditions.elementToBeClickable(element));
-                            
-                            // КРОК 2: Скролимо до кнопки та клікаємо через JavaScript
-                            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);
-                            sleep(500);
-                            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
-                            sleep(scrollDelay);
-                            log.info("✅ Load More button clicked successfully via JavaScript (text search)");
-                            return;
-                        } catch (Exception e) {
-                            log.warn("⚠️ JavaScript click failed for text search, trying regular click: {}", e.getMessage());
-                            // Fallback до звичайного кліку
-                            element.click();
-                            sleep(scrollDelay);
-                            log.info("✅ Load More button clicked successfully via regular click (text search)");
-                            return;
-                        }
-                    }
-                } catch (Exception e) {
-                    // Ігноруємо помилки для окремих елементів
-                    continue;
-                }
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Text-based button search failed: {}", e.getMessage());
-        }
-        
-        log.warn("⚠️ No Load More button found");
-        
-        // Додаткова діагностика: виводимо всі кнопки на сторінці
-        try {
-            List<WebElement> allButtons = driver.findElements(By.cssSelector("button"));
-            log.info("🔍 Found {} buttons on page:", allButtons.size());
-            for (int i = 0; i < Math.min(allButtons.size(), 10); i++) {
-                WebElement button = allButtons.get(i);
-                try {
-                    String buttonText = button.getText();
-                    boolean isDisplayed = button.isDisplayed();
-                    boolean isEnabled = button.isEnabled();
-                    log.info("   Button {}: '{}' (displayed: {}, enabled: {})", i + 1, buttonText, isDisplayed, isEnabled);
-                } catch (Exception e) {
-                    log.info("   Button {}: Error reading text", i + 1);
-                }
-            }
-        } catch (Exception e) {
-            log.debug("⚠️ Button diagnostics failed: {}", e.getMessage());
-        }
-    }
 
-    /**
-     * Скролить до низу сторінки
-     */
-    public void scrollToBottom(WebDriver driver) {
-        log.info("📜 Starting scroll to bottom process...");
-        
-        // Перевіряємо початкову кількість карток
-        int initialJobCount = driver.findElements(By.cssSelector(JOB_CARD_SELECTOR)).size();
-        log.info("🔍 Initial job cards found: {}", initialJobCount);
-        
-        // Спробуємо альтернативні селектори
-        if (initialJobCount == 0) {
-            log.warn("⚠️ Primary selector found 0 cards, trying alternatives...");
-            tryAlternativeSelectors(driver);
-        }
-        
-        // Використовуємо гібридний підхід (без фільтрації для загального випадку)
-        loadContentWithHybridApproach(driver, null);
-    }
+
+
 
     /**
      * Знаходить на сторінці текст "Showing X jobs" і витягує кількість X.
@@ -945,7 +645,7 @@ public class PageInteractionService {
      * @param totalJobsExpected Загальна кількість вакансій, яку потрібно завантажити.
      */
     public void loadAllAvailableJobs(WebDriver driver, int totalJobsExpected) {
-        log.info("🔄 Starting dynamic content loading. Expected jobs: {}", totalJobsExpected);
+        log.info("🔄 Loading jobs: expected {}", totalJobsExpected);
         if (totalJobsExpected == 0) {
             log.warn("⚠️ Expected job count is 0, skipping dynamic loading.");
             // Можна виконати один скрол про всяк випадок, якщо лічильник не знайшовся
@@ -961,7 +661,7 @@ public class PageInteractionService {
         // Спочатку спробуємо кнопку "Load More" один раз
         WebElement loadMoreButton = findLoadMoreButton(driver);
         if (loadMoreButton != null && isButtonClickable(loadMoreButton)) {
-            log.info("🔘 Found 'Load More' button, clicking once...");
+            log.debug("🔘 Found 'Load More' button, clicking once...");
             try {
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loadMoreButton);
                 sleep(scrollDelay);
@@ -969,20 +669,20 @@ public class PageInteractionService {
                 log.warn("⚠️ Could not click 'Load More' button: {}", e.getMessage());
             }
         } else {
-            log.info("📜 'Load More' button not found, will use scrolling only.");
+            log.debug("📜 'Load More' button not found, will use scrolling only.");
         }
 
         // Тепер використовуємо тільки скролінг для завантаження решти контенту
         while (currentJobCount < totalJobsExpected && attemptsWithNoNewJobs < MAX_ATTEMPTS_WITH_NO_NEW_JOBS) {
             currentJobCount = driver.findElements(By.cssSelector(JOB_CARD_SELECTOR)).size();
             
-            // Логуємо тільки кожні 20 вакансій, щоб зменшити спам
-            if (currentJobCount % 20 == 0 || currentJobCount >= totalJobsExpected) {
+            // Логуємо тільки кожні 50 вакансій, щоб зменшити спам
+            if (currentJobCount % 50 == 0 || currentJobCount >= totalJobsExpected) {
                 log.info("... Current job count: {} / {}", currentJobCount, totalJobsExpected);
             }
 
             if (currentJobCount >= totalJobsExpected) {
-                log.info("✅ All expected jobs seem to be loaded.");
+                log.debug("✅ All expected jobs seem to be loaded.");
                 break;
             }
             
@@ -995,14 +695,14 @@ public class PageInteractionService {
             if (newJobCount == currentJobCount) {
                 attemptsWithNoNewJobs++;
                 if (attemptsWithNoNewJobs == 1) {
-                    log.warn("⚠️ No new jobs loaded. Attempt {} of {}.", attemptsWithNoNewJobs, MAX_ATTEMPTS_WITH_NO_NEW_JOBS);
+                    log.debug("⚠️ No new jobs loaded. Attempt {} of {}.", attemptsWithNoNewJobs, MAX_ATTEMPTS_WITH_NO_NEW_JOBS);
                 }
             } else {
                 attemptsWithNoNewJobs = 0; // Скидаємо лічильник, якщо контент завантажився
             }
         }
 
-        log.info("✅ Content loading finished. Final job card count: {}", driver.findElements(By.cssSelector(JOB_CARD_SELECTOR)).size());
+        log.info("✅ Loading finished. Final count: {}", driver.findElements(By.cssSelector(JOB_CARD_SELECTOR)).size());
     }
 
 
