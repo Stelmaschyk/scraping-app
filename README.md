@@ -34,10 +34,8 @@ src/main/java/com/scrapper/
 │   │   ├── DataExtractionService.java     # Єдиний сервіс екстракції
 │   │   ├── DateParsingService.java        # Парсинг дат
 │   │   ├── DescriptionIngestService.java  # Збереження описів
-│   │   ├── LocationIngestService.java     # Збереження локацій
-│   │   ├── LogoIngestService.java         # Збереження логотипів
-│   │   ├── TagIngestService.java          # Збереження тегів
-│   │   └── TitleIngestService.java        # Збереження заголовків
+
+
 │   └── webdriver/                         # Управління WebDriver
 │       ├── WebDriverConfigService.java     # Конфігурація WebDriver
 │       ├── WebDriverManagerService.java    # Управління драйверами
