@@ -22,26 +22,19 @@ public class JobIngestServiceImpl implements JobIngestService {
         if (jobs == null || jobs.isEmpty()) {
             return 0;
         }
+        
         int savedCount = 0;
-        int skippedCount = 0;
         for (Job job : jobs) {
             try {
-                if (jobRepository.existsByJobPageUrl(job.getJobPageUrl())) {
-                    log.debug("Job already exists, skipping: {}", job.getJobPageUrl());
-                    skippedCount++;
-                    continue;
-                }
-                jobRepository.save(job);
-                savedCount++;
-                if (savedCount % 10 == 0) {
-                    log.info("Saved {}/{} jobs", savedCount, jobs.size());
+                if (!jobRepository.existsByJobPageUrl(job.getJobPageUrl())) {
+                    jobRepository.save(job);
+                    savedCount++;
                 }
             } catch (Exception e) {
                 log.error("❌ Error saving job {}: {}", job.getPositionName(), e.getMessage());
             }
         }
-        log.info("✅ Job saving completed. Saved: {}, Skipped: {}, Total processed: {}",
-            savedCount, skippedCount, jobs.size());
+        log.info("✅ Saved {}/{} jobs", savedCount, jobs.size());
         return savedCount;
     }
 }

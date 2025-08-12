@@ -17,20 +17,10 @@ public class WebDriverService {
     private final WebDriverManagerService webDriverManagerService;
     private final WebDriverConfigService webDriverConfigService;
 
-    /**
-     * Створює та налаштовує WebDriver для скрапінгу
-     * @return налаштований WebDriver
-     */
     public WebDriver createWebDriver() {
-        log.info("Creating WebDriver for scraping...");
-        var chromeOptions = webDriverConfigService.createChromeOptions();
-        return new ChromeDriver(chromeOptions);
+        return new ChromeDriver(webDriverConfigService.createChromeOptions());
     }
 
-    /**
-     * Закриває WebDriver
-     * @param driver WebDriver для закриття
-     */
     public void closeWebDriver(WebDriver driver) {
         webDriverManagerService.closeWebDriver(driver);
     }

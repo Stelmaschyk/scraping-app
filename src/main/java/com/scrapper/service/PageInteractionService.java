@@ -60,7 +60,7 @@ public class PageInteractionService {
             "a[class*='load']",
             "a[class*='more']"
         };
-        
+
         for (String selector : loadMoreSelectors) {
             try {
                 List<WebElement> buttons = driver.findElements(By.cssSelector(selector));
@@ -77,13 +77,6 @@ public class PageInteractionService {
         }
         return null;
     }
-
-
-
-
-
-
-
 
     /**
      * Закриває випадаюче меню job function
@@ -117,41 +110,43 @@ public class PageInteractionService {
      */
     private boolean scrollToLoadMore(WebDriver driver, List<String> jobFunctions) {
         log.info("📜 Starting scroll for content loading...");
-        
+
         int previousJobCount = countJobCardsWithFilter(driver, jobFunctions);
         int noNewJobsCount = 0;
         int scrollAttempts = 0;
-        
+
         while (scrollAttempts < maxScrollAttempts && noNewJobsCount < maxNoNewJobsAttempts) {
             try {
                 // Скролимо вниз
-                ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight);");
+                ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body"
+                    + ".scrollHeight);");
                 sleep(scrollDelay);
-                
+
                 // Перевіряємо нові картки з фільтрацією
                 int currentJobCount = countJobCardsWithFilter(driver, jobFunctions);
-                
+
                 if (currentJobCount > previousJobCount) {
-                    log.info("🔄 Jobs loaded: {} -> {} (attempt {})", 
+                    log.info("🔄 Jobs loaded: {} -> {} (attempt {})",
                         previousJobCount, currentJobCount, scrollAttempts + 1);
                     previousJobCount = currentJobCount;
                     noNewJobsCount = 0;
                 } else {
                     noNewJobsCount++;
                 }
-                
+
                 scrollAttempts++;
-                
+
             } catch (Exception e) {
-                log.warn("⚠️ Error during scroll attempt {}: {}", scrollAttempts + 1, e.getMessage());
+                log.warn("⚠️ Error during scroll attempt {}: {}", scrollAttempts + 1,
+                    e.getMessage());
                 noNewJobsCount++;
             }
         }
-        
-        log.info("✅ Scroll completed. Attempts: {}, Final count: {}", scrollAttempts, previousJobCount);
+
+        log.info("✅ Scroll completed. Attempts: {}, Final count: {}", scrollAttempts,
+            previousJobCount);
         return previousJobCount > 0;
     }
-
 
 
     /**
@@ -160,22 +155,22 @@ public class PageInteractionService {
     private int countJobCardsWithFilter(WebDriver driver, List<String> jobFunctions) {
         try {
             List<WebElement> cards = driver.findElements(By.cssSelector(JOB_CARD_SELECTOR));
-            
+
             if (jobFunctions == null || jobFunctions.isEmpty()) {
                 return cards.size();
             }
-            
+
             int filteredCount = 0;
             for (WebElement card : cards) {
                 String cardText = card.getText().toLowerCase();
                 boolean hasMatchingFunction = jobFunctions.stream()
                     .anyMatch(function -> cardText.contains(function.toLowerCase()));
-                
+
                 if (hasMatchingFunction) {
                     filteredCount++;
                 }
             }
-            
+
             return filteredCount;
         } catch (Exception e) {
             return 0;
@@ -183,53 +178,58 @@ public class PageInteractionService {
     }
 
 
-
     /**
      * Пошук карток вакансій з кількома стратегіями
      */
     public List<WebElement> findJobCardsWithMultipleStrategies(WebDriver driver) {
         log.info("🔍 Finding job cards with multiple strategies...");
-        
+
         // Спочатку тестуємо найбільш ймовірний селектор
         String primarySelector = "[class*='job-card']";
         try {
             List<WebElement> elements = driver.findElements(By.cssSelector(primarySelector));
-            log.info("🔍 Primary selector '{}' -> found {} elements", primarySelector, elements.size());
-            
+            log.info("🔍 Primary selector '{}' -> found {} elements", primarySelector,
+                elements.size());
+
             if (!elements.isEmpty()) {
                 // Валідація елементів - фільтруємо неправильні
                 List<WebElement> validElements = Validation.filterValidJobCards(elements);
-                log.info("🔍 After validation: {} valid elements out of {} total", validElements.size(), elements.size());
-                
+                log.info("🔍 After validation: {} valid elements out of {} total",
+                    validElements.size(), elements.size());
+
                 if (!validElements.isEmpty()) {
-                    log.info("✅ Found {} valid job cards with primary selector: '{}'", validElements.size(), primarySelector);
+                    log.info("✅ Found {} valid job cards with primary selector: '{}'",
+                        validElements.size(), primarySelector);
                     return validElements;
                 }
             }
         } catch (Exception e) {
             log.warn("⚠️ Primary selector '{}' failed: {}", primarySelector, e.getMessage());
         }
-        
+
         // Спробуємо інші селектори з ScrapingSelectors.JOB_CARD
         for (int i = 0; i < ScrapingSelectors.JOB_CARD.length; i++) {
             String selector = ScrapingSelectors.JOB_CARD[i];
-            
+
             // Пропускаємо основний селектор, який вже перевірили
             if (selector.equals(primarySelector)) {
                 continue;
             }
-            
+
             try {
                 List<WebElement> elements = driver.findElements(By.cssSelector(selector));
-                log.info("🔍 Selector {}: '{}' -> found {} elements", i + 1, selector, elements.size());
-                
+                log.info("🔍 Selector {}: '{}' -> found {} elements", i + 1, selector,
+                    elements.size());
+
                 if (!elements.isEmpty()) {
                     // Валідація елементів - фільтруємо неправильні
                     List<WebElement> validElements = Validation.filterValidJobCards(elements);
-                    log.info("🔍 After validation: {} valid elements out of {} total", validElements.size(), elements.size());
-                    
+                    log.info("🔍 After validation: {} valid elements out of {} total",
+                        validElements.size(), elements.size());
+
                     if (!validElements.isEmpty()) {
-                        log.info("✅ Found {} valid job cards with selector: '{}'", validElements.size(), selector);
+                        log.info("✅ Found {} valid job cards with selector: '{}'",
+                            validElements.size(), selector);
                         return validElements;
                     }
                 }
@@ -237,7 +237,7 @@ public class PageInteractionService {
                 log.warn("⚠️ Selector '{}' failed: {}", selector, e.getMessage());
             }
         }
-        
+
         // Аналіз всіх div елементів для діагностики
         List<WebElement> allDivs = driver.findElements(By.tagName("div"));
         int sampleSize = Math.min(10, allDivs.size());
@@ -255,7 +255,7 @@ public class PageInteractionService {
                 log.warn("⚠️ Error analyzing div {}: {}", i + 1, e.getMessage());
             }
         }
-        
+
         // Повертаємо перші 50 div елементів для аналізу
         return allDivs.subList(0, Math.min(50, allDivs.size()));
     }
@@ -272,7 +272,8 @@ public class PageInteractionService {
         try {
             // Стратегія 1: Шукаємо посилання за унікальним атрибутом data-testid
             try {
-                WebElement specificLink = jobCard.findElement(By.cssSelector("a[data-testid='job-card-link']"));
+                WebElement specificLink = jobCard.findElement(By.cssSelector("a[data-testid='job"
+                    + "-card-link']"));
                 String url = specificLink.getAttribute("href");
                 if (url != null && !url.isBlank()) {
                     log.debug("🔍 Стратегія 1: Знайдено URL за data-testid: {}", url);
@@ -312,7 +313,8 @@ public class PageInteractionService {
 
             // Стратегія 4: Шукаємо посилання за класом
             try {
-                List<WebElement> links = jobCard.findElements(By.cssSelector("a[class*='job'], a[class*='card'], a[class*='link']"));
+                List<WebElement> links = jobCard.findElements(By.cssSelector("a[class*='job'], "
+                    + "a[class*='card'], a[class*='link']"));
                 for (WebElement link : links) {
                     String url = link.getAttribute("href");
                     if (url != null && !url.isBlank()) {
@@ -339,7 +341,7 @@ public class PageInteractionService {
      */
     public boolean clickJobFunctionFilter(WebDriver driver, String jobFunction) {
         log.debug("🔍 Attempting to click job function filter: '{}'", jobFunction);
-        
+
         try {
             // КРОК 1: Знаходимо та натискаємо на кнопку "Job function"
             WebElement jobFunctionButton = findJobFunctionButton(driver);
@@ -347,17 +349,18 @@ public class PageInteractionService {
                 log.warn("⚠️ Could not find 'Job function' button");
                 return false;
             }
-            
+
             log.debug("✅ Found 'Job function' button, clicking to open dropdown...");
-            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", jobFunctionButton);
+            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);",
+                jobFunctionButton);
             Thread.sleep(500);
-            
+
             // Додаткова перевірка, чи кнопка клікабельна
             if (!jobFunctionButton.isEnabled() || !jobFunctionButton.isDisplayed()) {
                 log.warn("⚠️ Job function button is not clickable, waiting...");
                 Thread.sleep(2000);
             }
-            
+
             // Спробуємо клікнути кілька разів, якщо потрібно
             boolean dropdownOpened = false;
             for (int attempt = 1; attempt <= 3; attempt++) {
@@ -365,9 +368,10 @@ public class PageInteractionService {
                 try {
                     jobFunctionButton.click();
                     Thread.sleep(2000); // Чекаємо відкриття dropdown
-                    
+
                     // Перевіряємо, чи dropdown дійсно відкрився
-                    List<WebElement> dropdownOptions = driver.findElements(By.cssSelector("div.sc-beqWaB.dfbUjw"));
+                    List<WebElement> dropdownOptions = driver.findElements(By.cssSelector("div"
+                        + ".sc-beqWaB.dfbUjw"));
                     if (!dropdownOptions.isEmpty()) {
                         log.debug("✅ Dropdown opened successfully on attempt {}", attempt);
                         dropdownOpened = true;
@@ -377,46 +381,49 @@ public class PageInteractionService {
                         Thread.sleep(1000);
                     }
                 } catch (Exception e) {
-                    log.warn("⚠️ Error clicking job function button on attempt {}: {}", attempt, e.getMessage());
+                    log.warn("⚠️ Error clicking job function button on attempt {}: {}", attempt,
+                        e.getMessage());
                     Thread.sleep(1000);
                 }
             }
-            
+
             if (!dropdownOpened) {
                 log.error("❌ Failed to open dropdown after 3 attempts");
                 return false;
             }
-            
+
             // КРОК 2: Знаходимо та натискаємо на потрібну опцію в dropdown
             WebElement jobFunctionOption = findJobFunctionOption(driver, jobFunction);
             if (jobFunctionOption == null) {
                 log.warn("⚠️ Could not find job function option: '{}'", jobFunction);
                 return false;
             }
-            
-            log.debug("✅ Found job function option: '{}', clicking...", jobFunctionOption.getText());
-            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", jobFunctionOption);
+
+            log.debug("✅ Found job function option: '{}', clicking...",
+                jobFunctionOption.getText());
+            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);",
+                jobFunctionOption);
             Thread.sleep(500);
             jobFunctionOption.click();
             Thread.sleep(2000); // Чекаємо застосування фільтра
-            
+
             // КРОК 3: Закриваємо випадаюче меню після застосування фільтра
             log.debug("🔍 Closing dropdown after applying filter '{}'...", jobFunction);
             closeJobFunctionDropdown(driver);
-            
+
             // Додаткова пауза після закриття меню
             log.debug("🔍 Waiting after closing dropdown...");
             Thread.sleep(2000);
-            
+
             log.debug("✅ Successfully applied job function filter: '{}'", jobFunction);
             return true;
-            
+
         } catch (Exception e) {
             log.error("❌ Error clicking job function filter '{}': {}", jobFunction, e.getMessage());
             return false;
         }
     }
-    
+
     /**
      * Знаходить кнопку "Job function"
      */
@@ -432,10 +439,11 @@ public class PageInteractionService {
         } catch (Exception e) {
             log.debug("⚠️ Exact selector failed: {}", e.getMessage());
         }
-        
+
         // 2. Спробуємо XPath
         try {
-            List<WebElement> elements = driver.findElements(By.xpath("//div[contains(text(), 'Job function')]"));
+            List<WebElement> elements = driver.findElements(By.xpath("//div[contains(text(), 'Job"
+                + " function')]"));
             for (WebElement element : elements) {
                 if (element.isDisplayed()) {
                     return element;
@@ -444,7 +452,7 @@ public class PageInteractionService {
         } catch (Exception e) {
             log.debug("⚠️ XPath selector failed: {}", e.getMessage());
         }
-        
+
         // 3. Спробуємо загальні селектори
         for (String selector : ScrapingSelectors.JOB_FUNCTION_BUTTON) {
             try {
@@ -458,22 +466,22 @@ public class PageInteractionService {
                 log.debug("⚠️ Selector '{}' failed: {}", selector, e.getMessage());
             }
         }
-        
+
         return null;
     }
-    
+
     /**
      * Знаходить опцію job function в dropdown
      */
     private WebElement findJobFunctionOption(WebDriver driver, String jobFunction) {
         // Діагностика: виводимо всі доступні опції
         log.info("🔍 Looking for job function option: '{}'", jobFunction);
-        
+
         // 1. Спочатку спробуємо точний селектор
         try {
             List<WebElement> elements = driver.findElements(By.cssSelector("div.sc-beqWaB.dfbUjw"));
             log.info("🔍 Found {} elements with selector 'div.sc-beqWaB.dfbUjw'", elements.size());
-            
+
             for (WebElement element : elements) {
                 String elementText = element.getText();
                 log.info("🔍 Available option: '{}'", elementText);
@@ -484,10 +492,11 @@ public class PageInteractionService {
         } catch (Exception e) {
             log.debug("⚠️ Exact selector failed: {}", e.getMessage());
         }
-        
+
         // 2. Спробуємо data-testid селектор
         try {
-            String testIdSelector = String.format("[data-testid*='job_functions-%s']", jobFunction.replace(" ", "%20"));
+            String testIdSelector = String.format("[data-testid*='job_functions-%s']",
+                jobFunction.replace(" ", "%20"));
             List<WebElement> elements = driver.findElements(By.cssSelector(testIdSelector));
             for (WebElement element : elements) {
                 if (element.isDisplayed()) {
@@ -497,7 +506,7 @@ public class PageInteractionService {
         } catch (Exception e) {
             log.debug("⚠️ Data-testid selector failed: {}", e.getMessage());
         }
-        
+
         // 3. Спробуємо XPath
         try {
             String xpathSelector = String.format("//div[contains(text(), '%s')]", jobFunction);
@@ -510,7 +519,7 @@ public class PageInteractionService {
         } catch (Exception e) {
             log.debug("⚠️ XPath selector failed: {}", e.getMessage());
         }
-        
+
         // 4. Спробуємо загальні селектори
         for (String selector : ScrapingSelectors.JOB_FUNCTION_OPTIONS) {
             try {
@@ -525,7 +534,7 @@ public class PageInteractionService {
                 log.debug("⚠️ Selector '{}' failed: {}", selector, e.getMessage());
             }
         }
-        
+
         // 5. Якщо не знайдено, спробуємо прокрутити dropdown
         log.info("🔍 Option '{}' not found, attempting to scroll dropdown...", jobFunction);
         try {
@@ -540,7 +549,7 @@ public class PageInteractionService {
                 "ul[role='listbox']",
                 "ul[class*='dropdown']"
             };
-            
+
             for (String selector : containerSelectors) {
                 try {
                     List<WebElement> containers = driver.findElements(By.cssSelector(selector));
@@ -556,17 +565,19 @@ public class PageInteractionService {
                     log.debug("⚠️ Container selector '{}' failed: {}", selector, e.getMessage());
                 }
             }
-            
+
             if (dropdownContainer != null) {
                 log.info("🔍 Found dropdown container, scrolling down...");
                 // Прокручуємо dropdown вниз
-                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollTop = arguments[0].scrollHeight;", dropdownContainer);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollTop = "
+                    + "arguments[0].scrollHeight;", dropdownContainer);
                 Thread.sleep(1000);
-                
+
                 // Знову шукаємо опцію після прокрутки
-                List<WebElement> elements = driver.findElements(By.cssSelector("div.sc-beqWaB.dfbUjw"));
+                List<WebElement> elements = driver.findElements(By.cssSelector("div.sc-beqWaB"
+                    + ".dfbUjw"));
                 log.info("🔍 After scrolling, found {} elements", elements.size());
-                
+
                 for (WebElement element : elements) {
                     String elementText = element.getText();
                     log.info("🔍 Checking element after scroll: '{}'", elementText);
@@ -581,12 +592,9 @@ public class PageInteractionService {
         } catch (Exception e) {
             log.debug("⚠️ Scrolling dropdown failed: {}", e.getMessage());
         }
-        
+
         return null;
     }
-
-
-
 
 
     /**
@@ -616,7 +624,8 @@ public class PageInteractionService {
             log.warn("⚠️ Could not find element with CSS selector, trying XPath...");
             try {
                 // Альтернативний XPath селектор
-                WebElement countElement = driver.findElement(By.xpath("//div[contains(text(), 'Showing') and contains(text(), 'jobs')]"));
+                WebElement countElement = driver.findElement(By.xpath("//div[contains(text(), "
+                    + "'Showing') and contains(text(), 'jobs')]"));
                 String text = countElement.getText();
                 log.info("📊 Found element with XPath, text: '{}'", text);
 
@@ -629,7 +638,8 @@ public class PageInteractionService {
                     return totalJobs;
                 }
             } catch (Exception e2) {
-                log.warn("⚠️ Could not find or parse the total job count element. CSS Error: {}, XPath Error: {}", e.getMessage(), e2.getMessage());
+                log.warn("⚠️ Could not find or parse the total job count element. CSS Error: {}, "
+                    + "XPath Error: {}", e.getMessage(), e2.getMessage());
             }
         }
         // Повертаємо 0, якщо не вдалося знайти або розпарсити
@@ -641,7 +651,7 @@ public class PageInteractionService {
      * Динамічно завантажує всі вакансії, орієнтуючись на загальну кількість,
      * заявлену на сторінці після застосування фільтрів.
      *
-     * @param driver WebDriver
+     * @param driver            WebDriver
      * @param totalJobsExpected Загальна кількість вакансій, яку потрібно завантажити.
      */
     public void loadAllAvailableJobs(WebDriver driver, int totalJobsExpected) {
@@ -649,7 +659,8 @@ public class PageInteractionService {
         if (totalJobsExpected == 0) {
             log.warn("⚠️ Expected job count is 0, skipping dynamic loading.");
             // Можна виконати один скрол про всяк випадок, якщо лічильник не знайшовся
-            ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight);");
+            ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body"
+                + ".scrollHeight);");
             sleep(scrollDelay);
             return;
         }
@@ -663,7 +674,8 @@ public class PageInteractionService {
         if (loadMoreButton != null && isButtonClickable(loadMoreButton)) {
             log.debug("🔘 Found 'Load More' button, clicking once...");
             try {
-                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loadMoreButton);
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();",
+                    loadMoreButton);
                 sleep(scrollDelay);
             } catch (Exception e) {
                 log.warn("⚠️ Could not click 'Load More' button: {}", e.getMessage());
@@ -675,7 +687,7 @@ public class PageInteractionService {
         // Тепер використовуємо тільки скролінг для завантаження решти контенту
         while (currentJobCount < totalJobsExpected && attemptsWithNoNewJobs < MAX_ATTEMPTS_WITH_NO_NEW_JOBS) {
             currentJobCount = driver.findElements(By.cssSelector(JOB_CARD_SELECTOR)).size();
-            
+
             // Логуємо тільки кожні 50 вакансій, щоб зменшити спам
             if (currentJobCount % 50 == 0 || currentJobCount >= totalJobsExpected) {
                 log.info("... Current job count: {} / {}", currentJobCount, totalJobsExpected);
@@ -685,9 +697,10 @@ public class PageInteractionService {
                 log.debug("✅ All expected jobs seem to be loaded.");
                 break;
             }
-            
+
             // Просто скролимо вниз
-            ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight);");
+            ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body"
+                + ".scrollHeight);");
             sleep(scrollDelay);
 
             // Перевірка, чи з'явилися нові вакансії
@@ -695,27 +708,24 @@ public class PageInteractionService {
             if (newJobCount == currentJobCount) {
                 attemptsWithNoNewJobs++;
                 if (attemptsWithNoNewJobs == 1) {
-                    log.debug("⚠️ No new jobs loaded. Attempt {} of {}.", attemptsWithNoNewJobs, MAX_ATTEMPTS_WITH_NO_NEW_JOBS);
+                    log.debug("⚠️ No new jobs loaded. Attempt {} of {}.", attemptsWithNoNewJobs,
+                        MAX_ATTEMPTS_WITH_NO_NEW_JOBS);
                 }
             } else {
                 attemptsWithNoNewJobs = 0; // Скидаємо лічильник, якщо контент завантажився
             }
         }
 
-        log.info("✅ Loading finished. Final count: {}", driver.findElements(By.cssSelector(JOB_CARD_SELECTOR)).size());
+        log.info("✅ Loading finished. Final count: {}",
+            driver.findElements(By.cssSelector(JOB_CARD_SELECTOR)).size());
     }
 
 
-
-    /**
-     * Утиліта для затримки
-     */
     public void sleep(long milliseconds) {
         try {
             Thread.sleep(milliseconds);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("⚠️ Sleep interrupted");
         }
     }
 }

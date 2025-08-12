@@ -15,8 +15,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class JobCreationService {
 
-
-    
     /**
      * Створити Job з усіма доступними даними
      */
@@ -56,7 +54,6 @@ public class JobCreationService {
     }
 
     public ScrapeResponseDto createEmptyResponse(String message) {
-        log.info("ℹ️ Creating empty response: {}", message);
         return ScrapeResponseDto.builder()
                 .success(true)
                 .message(message)
@@ -69,7 +66,7 @@ public class JobCreationService {
     public ScrapeResponseDto createSuccessResponse(List<String> jobUrls, int savedCount) {
         return ScrapeResponseDto.builder()
                 .success(true)
-                .message("Scraping and saving completed successfully")
+                .message("Scraping completed successfully")
                 .totalJobsFound(jobUrls.size())
                 .jobsSaved(savedCount)
                 .jobUrls(jobUrls)
@@ -79,7 +76,7 @@ public class JobCreationService {
     public ScrapeResponseDto createErrorResponse(String errorMessage) {
         return ScrapeResponseDto.builder()
                 .success(false)
-                .message("Error during scraping: " + errorMessage)
+                .message("Error: " + errorMessage)
                 .totalJobsFound(0)
                 .jobsSaved(0)
                 .jobUrls(List.of())
