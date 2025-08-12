@@ -10,12 +10,6 @@ import java.util.List;
  * 
  * Цей сервіс усуває дублювання логіки між методами extract*FromCard() та extract*FromDetailPage()
  * і надає універсальні методи для обох джерел даних.
- * 
- * ПРИНЦИПИ:
- * - DRY (Don't Repeat Yourself) - немає дублювання коду
- * - Єдинорідність - одна логіка для обох джерел
- * - Легко тестувати - кожен метод тестується окремо
- * - Легко розширювати - нові стратегії додаються просто
  */
 public interface DataExtractionService {
     
@@ -41,22 +35,16 @@ public interface DataExtractionService {
      * Витягує URL логотипу з картки вакансії
      */
     String extractLogoUrl(WebElement source);
-    
+
     /**
      * Витягує назву компанії з джерела (картка або детальна сторінка)
      */
     String extractCompanyName(WebElement source);
     String extractCompanyName(WebDriver source);
-    
-    /**
-     * Витягує заголовок вакансії з джерела (картка або детальна сторінка)
-     */
+
     String extractTitle(WebElement source);
     String extractTitle(WebDriver source);
-    
-    /**
-     * Витягує опис вакансії з джерела (картка або детальна сторінка)
-     */
+
     String extractDescription(WebElement source);
     String extractDescription(WebDriver source);
 }

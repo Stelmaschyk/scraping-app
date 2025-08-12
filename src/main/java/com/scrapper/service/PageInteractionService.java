@@ -23,7 +23,7 @@ import java.util.List;
 @Slf4j
 public class PageInteractionService {
 
-    @Value("${scraping.selenium.scroll.delay:3000}")
+    @Value("${scraping.selenium.scroll.delay:1000}")
     private long scrollDelay;
 
     @Value("${scraping.selenium.scroll.max-attempts:8}")

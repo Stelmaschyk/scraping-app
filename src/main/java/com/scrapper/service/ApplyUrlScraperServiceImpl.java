@@ -386,7 +386,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                 // ✅ КРОК 1: Фільтрація за функціями (ПЕРШИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
                 if (jobFunctions != null && !jobFunctions.isEmpty()) {
                     // Шукаємо заголовок вакансії для перевірки функції
-                    String positionName = extractTitleFromDetailPage(driver);
+                    String positionName = dataExtractionService.extractTitle(driver);
                     if (positionName == null || positionName.trim().isEmpty()) {
                         log.warn("⚠️ Could not extract position name from detail page");
                         return jobs;
@@ -407,26 +407,26 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                 log.info("🔍 Detail page: All filters passed, saving job (tags will be collected)");
 
                 // Шукаємо заголовок вакансії
-                String positionName = extractTitleFromDetailPage(driver);
+                String positionName = dataExtractionService.extractTitle(driver);
                 if (positionName == null || positionName.trim().isEmpty()) {
                     log.warn("⚠️ Could not extract position name from detail page");
                     return jobs;
                 }
 
                 // Шукаємо назву компанії
-                String companyName = extractCompanyNameFromDetailPage(driver);
+                String companyName = dataExtractionService.extractCompanyName(driver);
 
                 // Шукаємо теги
-                List<String> tags = extractTagsFromDetailPage(driver);
+                List<String> tags = dataExtractionService.extractTags(driver);
 
                 // Шукаємо локацію
-                String location = extractLocationFromDetailPage(driver);
+                String location = dataExtractionService.extractLocation(driver);
 
                 // Шукаємо дату публікації
-                LocalDateTime postedDate = extractPostedDateFromDetailPage(driver);
+                LocalDateTime postedDate = dataExtractionService.extractPostedDate(driver);
 
                 // ✅ ДОДАНО: Шукаємо опис вакансії
-                String description = extractDescriptionFromDetailPage(driver);
+                String description = dataExtractionService.extractDescription(driver);
 
                 // ✅ ДОДАНО: Додаткова перевірка, щоб не зберігати назву вакансії як опис
                 if (description != null && description.equals(positionName)) {
@@ -472,7 +472,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                     + "filtering");
 
                 // Шукаємо заголовок вакансії
-                String positionName = extractTitleFromDetailPage(driver);
+                String positionName = dataExtractionService.extractTitle(driver);
                 if (positionName == null || positionName.trim().isEmpty()) {
                     log.warn("⚠️ Could not extract position name from detail page");
                     return jobs;
@@ -496,19 +496,19 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                     + "(tags will be collected)");
 
                 // Шукаємо назву компанії
-                String companyName = extractCompanyNameFromDetailPage(driver);
+                String companyName = dataExtractionService.extractCompanyName(driver);
 
                 // Шукаємо теги
-                List<String> tags = extractTagsFromDetailPage(driver);
+                List<String> tags = dataExtractionService.extractTags(driver);
 
                 // Шукаємо локацію
-                String location = extractLocationFromDetailPage(driver);
+                String location = dataExtractionService.extractLocation(driver);
 
                 // Шукаємо дату публікації
-                LocalDateTime postedDate = extractPostedDateFromDetailPage(driver);
+                LocalDateTime postedDate = dataExtractionService.extractPostedDate(driver);
 
                 // ✅ ДОДАНО: Шукаємо опис вакансії
-                String description = extractDescriptionFromDetailPage(driver);
+                String description = dataExtractionService.extractDescription(driver);
 
                 // Створюємо Job об'єкт
                 Job job = jobCreationService.createJobWithAllData(
@@ -540,7 +540,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
 
         try {
             // Шукаємо картки вакансій на сторінці компанії
-            List<WebElement> jobCards = findJobCardsOnCompanyPage(driver);
+            List<WebElement> jobCards = pageInteractionService.findJobCardsOnCompanyPage(driver);
             log.info("🔍 Found {} job cards on company page", jobCards.size());
 
             for (WebElement card : jobCards) {
@@ -740,223 +740,5 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         pageInteractionService.sleep(milliseconds);
     }
 
-    /**
-     * ✅ НОВИЙ МЕТОД: Екстракція заголовка з детальної сторінки
-     */
-    private String extractTitleFromDetailPage(WebDriver driver) {
-        try {
-            for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
-                if (selector.contains("itemprop='title'")) {
-                    List<WebElement> elements = driver.findElements(By.cssSelector(selector));
-                    if (!elements.isEmpty()) {
-                        String title = elements.get(0).getText().trim();
-                        log.info("✅ Extracted title from detail page: {}", title);
-                        return title;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Error extracting title from detail page: {}", e.getMessage());
-        }
-        return null;
-    }
 
-    /**
-     * ✅ НОВИЙ МЕТОД: Екстракція назви компанії з детальної сторінки
-     */
-    private String extractCompanyNameFromDetailPage(WebDriver driver) {
-        try {
-            for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
-                if (selector.contains("itemprop='name'")) {
-                    List<WebElement> elements = driver.findElements(By.cssSelector(selector));
-                    if (!elements.isEmpty()) {
-                        String companyName = elements.get(0).getText().trim();
-                        log.info("✅ Extracted company name from detail page: {}", companyName);
-                        return companyName;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Error extracting company name from detail page: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    /**
-     * ✅ НОВИЙ МЕТОД: Екстракція тегів з детальної сторінки
-     */
-    private List<String> extractTagsFromDetailPage(WebDriver driver) {
-        List<String> tags = new ArrayList<>();
-        try {
-            for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
-                if (selector.contains("data-testid=tag")) {
-                    List<WebElement> elements = driver.findElements(By.cssSelector(selector));
-                    for (WebElement element : elements) {
-                        String tag = element.getText().trim();
-                        if (!tag.isEmpty()) {
-                            tags.add(tag);
-                        }
-                    }
-                    if (!tags.isEmpty()) {
-                        log.info("✅ Extracted {} tags from detail page: {}", tags.size(), tags);
-                        return tags;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Error extracting tags from detail page: {}", e.getMessage());
-        }
-        return tags;
-    }
-
-    /**
-     * ✅ НОВИЙ МЕТОД: Екстракція локації з детальної сторінки
-     */
-    private String extractLocationFromDetailPage(WebDriver driver) {
-        try {
-            // Спочатку шукаємо в meta тегах
-            List<WebElement> metaElements = driver.findElements(By.cssSelector("meta[itemprop"
-                + "='address']"));
-            if (!metaElements.isEmpty()) {
-                String location = metaElements.get(0).getAttribute("content");
-                if (location != null && !location.trim().isEmpty()) {
-                    log.info("✅ Extracted location from meta tag: {}", location);
-                    return location.trim();
-                }
-            }
-
-            // Потім шукаємо в div елементах
-            for (String selector : ScrapingSelectors.JOB_DETAIL_PAGE) {
-                if (selector.contains("sc-beqWaB")) {
-                    List<WebElement> elements = driver.findElements(By.cssSelector(selector));
-                    for (WebElement element : elements) {
-                        String text = element.getText().trim();
-                        if (text.contains(",") && (text.contains("USA") || text.contains("Remote") || text.contains("India"))) {
-                            log.info("✅ Extracted location from div: {}", text);
-                            return text;
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Error extracting location from detail page: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    /**
-     * ✅ НОВИЙ МЕТОД: Екстракція дати публікації з детальної сторінки
-     */
-    private LocalDateTime extractPostedDateFromDetailPage(WebDriver driver) {
-        try {
-            // ✅ ВИПРАВЛЕНО: Спочатку шукаємо в meta тегах
-            List<WebElement> metaElements = driver.findElements(By.cssSelector("meta[itemprop"
-                + "='datePosted']"));
-            if (!metaElements.isEmpty()) {
-                String dateStr = metaElements.get(0).getAttribute("content");
-                if (dateStr != null && !dateStr.trim().isEmpty()) {
-                    // ✅ ВИПРАВЛЕНО: Використовуємо DateParsingService для парсингу дати з meta тегу
-                    LocalDateTime date = dateParsingService.parseMetaDate(dateStr);
-                    if (date != null) {
-                        log.info("✅ Extracted posted date from meta tag: '{}' -> {} (Unix: {})",
-                            dateStr, date, date.toEpochSecond(java.time.ZoneOffset.UTC));
-                        return date;
-                    }
-                }
-            }
-
-
-        } catch (Exception e) {
-            log.warn("⚠️ Error extracting posted date from detail page: {}", e.getMessage());
-        }
-
-        // Повертаємо поточну дату як запасний варіант
-        log.info("⚠️ Using current date as fallback for posted date");
-        LocalDateTime fallbackDate = LocalDateTime.now();
-        log.info("📅 Using fallback date: {} (Unix: {})", fallbackDate,
-            fallbackDate.toEpochSecond(java.time.ZoneOffset.UTC));
-        return fallbackDate;
-    }
-
-    /**
-     * ✅ НОВИЙ МЕТОД: Пошук карток вакансій на сторінці компанії
-     */
-    private List<WebElement> findJobCardsOnCompanyPage(WebDriver driver) {
-        // ✅ ВИКОРИСТОВУЄМО PageInteractionService
-        return pageInteractionService.findJobCardsOnCompanyPage(driver);
-    }
-
-
-    /**
-     * ✅ НОВИЙ МЕТОД: Витягує опис вакансії з детальної сторінки
-     */
-    private String extractDescriptionFromDetailPage(WebDriver driver) {
-        try {
-            // ✅ Шукаємо опис в div з data-testid="careerPage"
-            List<WebElement> careerPageElements = driver.findElements(By.cssSelector("div[data"
-                + "-testid='careerPage']"));
-            if (!careerPageElements.isEmpty()) {
-                WebElement careerPage = careerPageElements.get(0);
-                String description = careerPage.getAttribute("innerHTML");
-                if (description != null && !description.trim().isEmpty()) {
-                    log.info("📝 Found description in careerPage div, length: {} characters",
-                        description.length());
-                    return description.trim();
-                }
-            }
-
-            // ✅ Шукаємо опис в div з класом sc-beqWaB fmCCHr
-            List<WebElement> descriptionElements = driver.findElements(By.cssSelector("div"
-                + ".sc-beqWaB.fmCCHr"));
-            if (!descriptionElements.isEmpty()) {
-                WebElement descriptionDiv = descriptionElements.get(0);
-                String description = descriptionDiv.getAttribute("innerHTML");
-                if (description != null && !description.trim().isEmpty()) {
-                    log.info("📝 Found description in sc-beqWaB.fmCCHr div, length: {} "
-                        + "characters", description.length());
-                    return description.trim();
-                }
-            }
-
-            // ✅ Шукаємо опис за селекторами з ScrapingSelectors
-            for (String selector : ScrapingSelectors.DESCRIPTION) {
-                try {
-                    List<WebElement> elements = driver.findElements(By.cssSelector(selector));
-                    for (WebElement element : elements) {
-                        String elementHtml = element.getAttribute("innerHTML");
-                        if (elementHtml != null && elementHtml.length() > 200) { // HTML має бути
-                            // довгим
-                            log.info("📝 Found description using selector '{}', length: {} "
-                                + "characters", selector, elementHtml.length());
-                            return elementHtml.trim();
-                        }
-                    }
-                } catch (Exception e) {
-                    log.debug("⚠️ Error with selector '{}': {}", selector, e.getMessage());
-                }
-            }
-
-            // ✅ Шукаємо опис в всіх div елементах з класом sc-beqWaB
-            List<WebElement> allScElements = driver.findElements(By.cssSelector("div[class*='sc"
-                + "-beqWaB']"));
-            for (WebElement element : allScElements) {
-                String elementText = element.getText();
-                if (elementText != null && elementText.length() > 100) { // Шукаємо довгий текст
-                    String elementHtml = element.getAttribute("innerHTML");
-                    if (elementHtml != null && elementHtml.length() > 200) { // HTML має бути ще
-                        // довшим
-                        log.info("📝 Found potential description in sc-beqWaB div, length: {} "
-                            + "characters", elementHtml.length());
-                        return elementHtml.trim();
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            log.warn("⚠️ Error extracting description from detail page: {}", e.getMessage());
-        }
-
-        log.info("📝 No description found on detail page");
-        return null;
-    }
 }
