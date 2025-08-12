@@ -14,6 +14,4 @@ import java.util.Optional;
 public interface JobRepository extends JpaRepository<Job, Long> {
 
     boolean existsByJobPageUrl(String jobPageUrl);
-    
-    Optional<Job> findByJobPageUrl(String jobPageUrl);
 }

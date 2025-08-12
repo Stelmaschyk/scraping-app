@@ -48,7 +48,7 @@ public class Job {
     @Column(nullable = false)
     private String address;
     @Column(nullable = false)
-    private long postedDate; // ✅ ЗМІНЕНО: Unix Timestamp замість LocalDateTime
+    private long postedDate;
     @Column(nullable = false)
     private String description;
 
@@ -64,9 +64,7 @@ public class Job {
     @Builder.Default
     private List<String> tags = new ArrayList<>();
 
-    /**
-     * ✅ ДОДАНО: Конвертує LocalDateTime в Unix Timestamp
-     */
+    //LocalDateTime в Unix Timestamp
     public void setPostedDateFromLocalDateTime(LocalDateTime localDateTime) {
         if (localDateTime != null) {
             this.postedDate = localDateTime.toEpochSecond(ZoneOffset.UTC);
@@ -75,28 +73,10 @@ public class Job {
         }
     }
 
-    /**
-     * ✅ ДОДАНО: Конвертує Unix Timestamp в LocalDateTime
-     */
-    public LocalDateTime getPostedDateAsLocalDateTime() {
-        return LocalDateTime.ofEpochSecond(this.postedDate, 0, ZoneOffset.UTC);
-    }
-
-    /**
-     * ✅ ДОДАНО: Встановлює поточний час як Unix Timestamp
-     */
-    public void setCurrentTimeAsPostedDate() {
-        this.postedDate = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
-    }
-
     public void addTag(String tag){
         if(Validation.NOT_BLANK.test(tag)){
             this.tags.add(tag.trim());
         }
-    }
-
-    public void isValid(){
-        Validation.IS_VALID.test(this);
     }
 
     public void addLocation(String location){

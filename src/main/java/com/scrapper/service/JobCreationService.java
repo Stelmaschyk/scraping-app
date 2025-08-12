@@ -15,29 +15,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class JobCreationService {
 
-    public List<Job> createJobsFromUrls(List<String> jobUrls, List<String> jobFunctions) {
-        String defaultFunction = jobFunctions.isEmpty() ? 
-                "Software Engineering" : jobFunctions.get(0);
 
-        return jobUrls.stream()
-                .map(url -> {
-                    Job job = Job.builder()
-                            .positionName("Job from " + url)
-                            .jobPageUrl(url)
-                            .organizationUrl(url)
-                            .organizationTitle("Company from Techstars")
-                            .laborFunction(defaultFunction)
-                            .address("Remote")
-                            .description("Job scraped from Techstars")
-                            .build();
-                    
-                    // ✅ ОНОВЛЕНО: Використовуємо новий метод для встановлення Unix Timestamp
-                    job.setCurrentTimeAsPostedDate();
-                    
-                    return job;
-                })
-                .collect(Collectors.toList());
-    }
     
     /**
      * Створити Job з усіма доступними даними
