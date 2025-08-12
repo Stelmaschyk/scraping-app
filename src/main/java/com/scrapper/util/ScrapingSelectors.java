@@ -4,46 +4,21 @@ public class ScrapingSelectors {
     private ScrapingSelectors() {
     }
 
-    // Селектори для карток вакансій (використовуються в DirectJobScraperServiceImpl та ApplyUrlScraperServiceImpl)
+    // Селектори для карток вакансій (використовується ApplyUrlScraperServiceImpl)
     public static final String[] JOB_CARD = new String[]{
-        // ✅ ОПТИМІЗОВАНО: Залишено тільки працюючі селектори на основі логів
-        
+
         // Селектор, який дійсно працює (знаходить 220 елементів)
         "[class*='job-card']",
-        
-        // Запасні селектори, які можуть працювати
-        "[class*='job-item']",
-        "[class*='position-card']",
-        "[class*='vacancy-card']",
-        "[class*='opportunity-card']",
-        "div[class*='JobCard']",
-        "div[class*='JobItem']",
-        
-        // Селектори на основі структури
-        "div:has([data-testid=job-title])",
-        "div:has([data-testid=organization-name])",
-        "div:has([data-testid=job-function])",
-        "div:has([data-testid=tag])",
-        "div[role=article]",
-        "div[role=listitem]",
-        
-        // Запасні селектори
-        ".job-card",
-        ".job-item",
-        ".position-card",
-        ".vacancy-card",
-        ".opportunity-card",
-        "[data-testid=content] > div",
 
-        // ✅ ДОДАНО: Більш точні селектори для пошуку карток з посиланнями
+        // Більш точні селектори для пошуку карток з посиланнями
         "div:has(a[href*='/jobs/']):not(:has([data-testid=search])):not(:has([data-testid=navigation]))",
         "div:has(a[href*='/companies/']):not(:has([data-testid=search])):not(:has([data-testid=navigation]))",
         
-        // ✅ ДОДАНО: Селектори для пошуку карток за структурою
+        // Селектори для пошуку карток за структурою
         "div:has(h1, h2, h3):has(a[href*='/jobs/'])",
         "div:has(h1, h2, h3):has(a[href*='/companies/'])",
         
-        // ✅ ДОДАНО: Селектори для пошуку карток за вмістом
+        // Селектори для пошуку карток за вмістом
         "div:has([class*='job']):has(a[href])",
         "div:has([class*='position']):has(a[href])",
         "div:has([class*='vacancy']):has(a[href])",
@@ -96,7 +71,7 @@ public class ScrapingSelectors {
         "input[type='text']"
     };
 
-    // ✅ ДОДАНО: Селектори для кнопок та посилань (щоб їх виключати)
+    // Селектори для кнопок та посилань (щоб їх виключати)
     public static final String[] BUTTON_ELEMENTS = new String[]{
         "[data-testid=button]",
         "[data-testid=link]",
@@ -107,153 +82,63 @@ public class ScrapingSelectors {
         ".link"
     };
 
-    // ✅ ДОДАНО: Селектори для статистики та інформації (щоб їх виключати)
-    public static final String[] STATS_ELEMENTS = new String[]{
-        "[data-testid=stats]",
-        "[data-testid=counter]",
-        "[data-testid=info]",
-        ".stats",
-        ".counter",
-        ".info",
-        ".statistics"
-    };
-
     // Селектори для заголовків вакансій (використовуються в JobIngestServiceImpl та CombinedJobIngestService)
     public static final String[] JOB_TITLE = new String[]{
-        // ✅ ОНОВЛЕНО: Точні селектори на основі реального HTML
         "[itemprop='title']",
         "div[itemprop='title']",
         "div[font-size*='2,3'][color='text.dark'][font-weight='medium']",
-        "div.sc-beqWaB.kToBwF",
-        
-        // Запасні селектори
-        "[data-testid=job-title]",
-        "[data-testid=position-title]",
-        "[data-testid=vacancy-title]",
-        "[data-testid=opportunity-title]",
-        "h1[data-testid=job-title]",
-        "h2[data-testid=job-title]",
-        "h3[data-testid=job-title]",
-        ".job-title",
-        ".position-title",
-        ".vacancy-title",
-        ".opportunity-title",
-        "h1, h2, h3"
+        "div.sc-beqWaB.kToBwF"
     };
 
     // Селектори для назв організацій (використовуються в JobIngestServiceImpl та CombinedJobIngestService)
     public static final String[] ORG_NAME = new String[]{
         // ✅ ОНОВЛЕНО: Точні селектори на основі реального HTML
         "[itemprop='name']",
-        "meta[itemprop='name']",
-        
-        // Запасні селектори
-        "[data-testid=organization-name]",
-        "[data-testid=company-name]",
-        "[data-testid=org-name]",
-        "[data-testid=employer-name]",
-        ".organization-name",
-        ".company-name",
-        ".employer-name",
-        ".org-name",
-        "[class*='organization']",
-        "[class*='company']",
-        "[class*='employer']",
-        "h1, h2, h3, h4, h5, h6"
+        "meta[itemprop='name']"
     };
 
-    // Селектори для посилань на організації (використовуються в CombinedJobIngestService)
-    public static final String[] ORG_LINK = new String[]{
-        "a[data-testid=organization-link]",
-        ".organization-link",
-        "a[href*='http']:not([data-testid=job-title])"
-    };
 
     // Селектори для логотипів організацій (використовуються в JobIngestServiceImpl та CombinedJobIngestService)
     public static final String[] ORG_LOGO = new String[]{
-        // ✅ ОНОВЛЕНО: Точні селектори на основі реального HTML
-        "img[data-testid=image]",
+         "img[data-testid=image]",
         "[data-testid=profile-picture] img",
         "[data-testid=company-logo] img",
         "[data-testid=organization-logo] img",
         ".organization-logo img",
         "img[alt*='logo']",
         "img[alt*='company']",
-        "img[alt*='organization']",
-        
-        // Запасні селектори
-        "img[src*='logo']",
-        "img[src*='company']",
-        "img[src*='organization']"
+        "img[alt*='organization']"
     };
 
-    // Селектори для функцій вакансій (використовуються в JobIngestServiceImpl та CombinedJobIngestService)
+    // Селектори для функцій вакансій (використовуються в JobIngestServiceImpl)
     public static final String[] JOB_FUNCTION = new String[]{
-        // ✅ ОНОВЛЕНО: Точні селектори на основі реального HTML
         "[data-testid=job-function]",
         "[data-testid=position-function]",
         "[data-testid=role-function]",
         "[itemprop='jobFunction']",
-        "meta[itemprop='jobFunction']",
-        
-        // Запасні селектори
-        "div[class*='sc-']:has([data-testid=job-function])",
-        "[data-testid=content] div",
-        "[data-testid=content] span",
-        "div[class*='bpXRKw']",
-        "div:has([data-testid=job-function])",
-        "div:has([data-testid=position-function])",
-        "div:has([data-testid=role-function])",
-        "div, span, p, li",
-        ".job-function",
-        ".position-function",
-        ".role-function"
+        "meta[itemprop='jobFunction']"
     };
 
-    // Селектори для тегів (використовуються в ApplyUrlScraperServiceImpl, JobIngestServiceImpl та CombinedJobIngestService)
+    // Селектори для тегів (використовуються в ApplyUrlScraperServiceImpl, JobIngestServiceImpl)
     public static final String[] TAGS = new String[]{
-        // ✅ ОНОВЛЕНО: Точні селектори на основі реального HTML
         "[data-testid=tag]",
         "div[data-testid=tag]",
         "div.sc-dmqHEX.OHsAR",
-        "div.sc-dmqHEX.XKhIJ",
-        
-        // Запасні селектори
-        "[data-testid=skill]",
-        "[data-testid=technology]",
-        "[data-testid=requirement]",
-        ".job-tags .tag",
-        ".skill-tags .tag",
-        ".technology-tags .tag",
-        "[class*='tag']",
-        "[class*='skill']",
-        "[class*='technology']",
-        ".tag",
-        ".skill",
-        ".technology",
-        ".requirement"
+        "div.sc-dmqHEX.XKhIJ"
     };
 
-    // Селектори для локацій (використовуються в JobIngestServiceImpl та CombinedJobIngestService)
+    // Селектори для локацій (використовуються в JobIngestServiceImpl)
     public static final String[] LOCATION = new String[]{
-        // ✅ ОНОВЛЕНО: Точні селектори на основі реального HTML
         "[itemprop='address']",
         "meta[itemprop='address']",
         "div.sc-beqWaB.sc-gueYoa.ictnPY.MYFxR",
         "div.sc-beqWaB.ewYjoF",
         "span.sc-beqWaB.vIGjl",
-        
-        // Запасні селектори
-        "[data-testid=location]",
-        ".location",
-        "[class*='location']",
-        "[data-testid=content] div:matchesOwn(,)",
-        "div[class*='bpXRKw']:matchesOwn(,)"
     };
 
     // Селектори для дат публікації (використовуються в JobIngestServiceImpl)
     public static final String[] POSTED_DATE = new String[]{
-        // ✅ ОНОВЛЕНО: Точні селектори на основі реального HTML
+
         "meta[itemprop='datePosted']",
         "[itemprop='datePosted']",
         
@@ -267,20 +152,10 @@ public class ScrapingSelectors {
         "div:contains('Today')",
         "div:contains('Yesterday')",
         "div:contains('Posted')",
-        
-        // Запасні селектори
-        "[data-testid=posted-date]",
-        ".posted-date",
-        "time[datetime]",
-        "[class*='posted']",
-        "[data-testid=content] div:matchesOwn(^\\s*on\\s+\\w+\\s+\\d{1,2},\\s+\\d{4}\\s*$)",
-        "div:matchesOwn(^\\s*on\\s+\\w+\\s+\\d{1,2},\\s+\\d{4}\\s*$)",
-        "div:matchesOwn(^\\s*Posted\\s*$) ~ div"
     };
 
-    // Селектори для описів (використовуються в JobIngestServiceImpl та CombinedJobIngestService)
+    // Селектори для описів (використовуються в JobIngestServiceImpl)
     public static final String[] DESCRIPTION = new String[]{
-        // ✅ ОНОВЛЕНО: Точні селектори на основі реального HTML
         "[data-testid=careerPage]",
         "[data-testid=careerPage] section",
         "[data-testid=careerPage] div",
@@ -319,23 +194,13 @@ public class ScrapingSelectors {
         "div.job-info .description",
         "div.job-info .about",
         "div.job-info .summary",
-        
-        // ✅ ДОДАНО: Селектори для meta тегів з описом
         "meta[itemprop='description']",
         "[itemprop='description']",
-        
-        // Запасні селектори
-        "#about-job .tiptap.ProseMirror",
-        "#about-job [class*='Editor__Content']",
-        "#about-job [class*='About__Job__Content']",
-        ".job-description",
-        "article [class*='description']",
-        "div[itemprop='description']"
+
     };
 
     // Селектори для посилань на подачу заявки (використовуються в ApplyUrlScraperServiceImpl)
     public static final String[] APPLY_OR_READ_MORE = new String[]{
-        // ✅ ОНОВЛЕНО: Точні селектори на основі реального HTML
         "a[data-testid=read-more][href]",
         "a[data-testid=apply][href]",
         "a[data-testid=apply-now][href]",
@@ -344,14 +209,6 @@ public class ScrapingSelectors {
         "a:matchesOwn(Read more)",
         "a:matchesOwn(Apply)",
         "a:matchesOwn(Apply Now)",
-        
-        // Запасні селектори
-        "a[href*='apply']",
-        "a[href*='application']",
-        "button[data-testid=apply]",
-        "button:matchesOwn(Apply)",
-        ".apply-button",
-        ".read-more-button"
     };
 
     // Селектори для посилань на картки вакансій (використовуються в DirectJobScraperServiceImpl)
@@ -364,16 +221,10 @@ public class ScrapingSelectors {
         "a[href*='/jobs/']",
         "a[href*='/companies/']",
         "a[href*='techstars.com']",
-        
-        // Запасні селектори
-        "a[href*='careers']",
-        "a[href*='opportunities']",
-        "a[href*='positions']"
     };
 
     // Селектори для кнопки Load More
     public static final String[] LOAD_MORE_BUTTON = new String[]{
-        // ✅ ОНОВЛЕНО: Точні селектори на основі реального HTML
         "button[data-testid='load-more']",
         "button[data-testid='show-more']",
         "button:contains('Load more')",
@@ -384,16 +235,6 @@ public class ScrapingSelectors {
         "a[data-testid='show-more']",
         "a:contains('Load more')",
         "a:contains('Show more')",
-        
-        // Запасні селектори
-        "[data-testid='load-more']",
-        "[data-testid='show-more']",
-        ".load-more-button",
-        ".show-more-button",
-        "button[class*='load']",
-        "button[class*='more']",
-        "a[class*='load']",
-        "a[class*='more']"
     };
 
     // ✅ ДОДАНО: Селектори для пошуку вакансій на різних сторінках
