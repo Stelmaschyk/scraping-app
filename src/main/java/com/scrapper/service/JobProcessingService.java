@@ -83,21 +83,11 @@ public class JobProcessingService {
                     log.info("Processing card {}: {}", i + 1, preview);
                 }
                 
-                // КРОК 5: Фільтрація за job functions (ПЕРШИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
-                if (!hasRequiredJobFunction(card, jobFunctions)) {
-                    if (isFirstCards) {
-                        log.info("Card {} failed function filter", i + 1);
-                        // Додаткова діагностика для перших карток
-                        String cardText = card.getText().toLowerCase();
-                        log.info("Card {} text preview: '{}'", i + 1,
-                                cardText.length() > 300 ? cardText.substring(0, 300) + "..." : cardText);
-                    }
-                    continue;
-                }
+                // КРОК 5: Пропускаємо фільтрацію за job functions - обробляємо всі картки
                 passedFunctionFilter++;
                 
                 if (isFirstCards) {
-                    log.info("Card {} passed function filter", i + 1);
+                    log.info("Card {} processing (no function filter)", i + 1);
                 }
                 
                 // КРОК 6: Пошук URL (ДРУГИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
@@ -168,11 +158,8 @@ public class JobProcessingService {
             String location = dataExtractionService.extractLocation(jobCard);
             List<String> tags = dataExtractionService.extractTags(jobCard);
             
-            log.info("🏢 Company name extracted: '{}' for URL: {}", organizationTitle, jobPageUrl);
-            log.info("💼 Position name: '{}'", positionName);
-            log.info("🏷️ Tags found: {}", tags);
-            log.info("📍 Location: '{}'", location);
-            log.info("🖼️ Logo URL: '{}'", logoUrl);
+            log.info("📋 Job extracted: '{}' at '{}' | Location: '{}' | Tags: {} | Logo: {}",
+                positionName, organizationTitle, location, tags, logoUrl != null ? "Found" : "Not found");
             
             // Створення Job об'єкта
             Job job = jobCreationService.createJobWithAllData(
@@ -220,10 +207,7 @@ public class JobProcessingService {
             try {
                 WebElement card = jobCards.get(i);
                 
-                // Фільтрація за функціями
-                if (!hasRequiredJobFunction(card, jobFunctions)) {
-                    continue;
-                }
+                // Пропускаємо фільтрацію за функціями - обробляємо всі картки
                 passedFunctionFilter++;
                 
                 // Пошук URL
@@ -328,21 +312,5 @@ public class JobProcessingService {
         return jobs;
     }
 
-    /**
-     * Перевіряє, чи має вакансія потрібну функцію
-     */
-    private boolean hasRequiredJobFunction(WebElement jobCard, List<String> jobFunctions) {
-        if (jobFunctions == null || jobFunctions.isEmpty()) {
-            return true;
-        }
-        
-        try {
-            String cardText = jobCard.getText().toLowerCase();
-            return jobFunctions.stream()
-                    .anyMatch(function -> cardText.contains(function.toLowerCase()));
-        } catch (Exception e) {
-            log.warn("⚠️ Error checking job functions: {}", e.getMessage());
-            return true; // В разі помилки пропускаємо
-        }
-    }
+
 }

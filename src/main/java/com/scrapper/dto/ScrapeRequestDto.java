@@ -14,6 +14,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ScrapeRequestDto {
-    @NotEmpty(message = "Job functions cannot be empty")
-    private List<@NotBlank(message = "Job function cannot be blank") String> jobFunctions;
+    @NotEmpty
+    private List<String> jobFunctions;
 }

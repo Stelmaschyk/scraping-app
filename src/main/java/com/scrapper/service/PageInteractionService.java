@@ -23,38 +23,35 @@ import java.util.List;
 @Slf4j
 public class PageInteractionService {
 
-    @Value("${scraping.selenium.scroll.delay:10000}")
+    @Value("${scraping.selenium.scroll.delay:3000}")
     private long scrollDelay;
 
-    @Value("${scraping.selenium.scroll.max-attempts:20}")
+    @Value("${scraping.selenium.scroll.max-attempts:8}")
     private int maxScrollAttempts;
 
-    @Value("${scraping.selenium.scroll.max-no-new-jobs:3}")
+    @Value("${scraping.selenium.scroll.max-no-new-jobs:2}")
     private int maxNoNewJobsAttempts;
 
     private static final String LOAD_MORE_SELECTOR = ScrapingSelectors.LOAD_MORE_BUTTON[0];
     private static final String JOB_CARD_SELECTOR = ScrapingSelectors.JOB_CARD[0];
 
     /**
-     * Гібридний підхід: Load More + нескінченна прокрутка
+     * Гібридний підхід: Load More + прокрутка
      */
-    public boolean loadContentWithHybridApproach(WebDriver driver) {
-        log.info("🔄 Starting hybrid content loading approach...");
+    public boolean loadContentWithHybridApproach(WebDriver driver, List<String> jobFunctions) {
+        log.info("🔄 Starting content loading...");
         
         try {
             // Крок 1: Load More кнопка (один раз)
-            boolean loadMoreClicked = clickLoadMoreButtonOnce(driver);
+            clickLoadMoreButtonOnce(driver);
             
-            // Крок 2: Нескінченна прокрутка
-            boolean scrollSuccess = scrollToLoadMore(driver);
+            // Крок 2: Прокрутка
+            scrollToLoadMore(driver, jobFunctions);
             
-            boolean success = loadMoreClicked || scrollSuccess;
-            log.info("✅ Hybrid content loading completed. Load More: {}, Scroll: {}", loadMoreClicked, scrollSuccess);
-            
-            return success;
+            return true;
             
         } catch (Exception e) {
-            log.error("❌ Error during hybrid content loading: {}", e.getMessage(), e);
+            log.error("❌ Error during content loading: {}", e.getMessage());
             return false;
         }
     }
@@ -63,7 +60,7 @@ public class PageInteractionService {
      * Натискає кнопку Load More один раз
      */
     private boolean clickLoadMoreButtonOnce(WebDriver driver) {
-        log.info("🔘 Attempting to click Load More button once...");
+        log.info("🔘 Attempting to click Load More button...");
         
         try {
             WebElement loadMoreButton = findLoadMoreButton(driver);
@@ -73,19 +70,10 @@ public class PageInteractionService {
                 return false;
             }
             
-            if (!isButtonClickable(loadMoreButton)) {
-                log.info("⚠️ Load More button is not clickable");
-                return false;
-            }
-            
-            // Скролимо до кнопки та натискаємо
-            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", loadMoreButton);
-            sleep(1000);
-            
             loadMoreButton.click();
-            sleep(scrollDelay);
+            sleep(2000); // Зменшена затримка для кнопки Load More
             
-            log.info("✅ Load More button clicked successfully");
+            log.info("✅ Load More button clicked");
             return true;
             
         } catch (Exception e) {
@@ -146,32 +134,30 @@ public class PageInteractionService {
     /**
      * Нескінченна прокрутка для завантаження контенту
      */
-    private boolean scrollToLoadMore(WebDriver driver) {
-        log.info("📜 Starting infinite scroll for content loading...");
+    private boolean scrollToLoadMore(WebDriver driver, List<String> jobFunctions) {
+        log.info("📜 Starting scroll for content loading...");
         
-        int previousJobCount = 0;
+        int previousJobCount = countJobCardsWithFilter(driver, jobFunctions);
         int noNewJobsCount = 0;
         int scrollAttempts = 0;
         
         while (scrollAttempts < maxScrollAttempts && noNewJobsCount < maxNoNewJobsAttempts) {
             try {
-                // Поточна кількість карток
-                int currentJobCount = countJobCards(driver);
+                // Скролимо вниз
+                ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight);");
+                sleep(scrollDelay);
+                
+                // Перевіряємо нові картки з фільтрацією
+                int currentJobCount = countJobCardsWithFilter(driver, jobFunctions);
                 
                 if (currentJobCount > previousJobCount) {
-                    log.info("🔄 New jobs loaded: {} -> {} (attempt {})", 
+                    log.info("🔄 Jobs loaded: {} -> {} (attempt {})", 
                         previousJobCount, currentJobCount, scrollAttempts + 1);
                     previousJobCount = currentJobCount;
                     noNewJobsCount = 0;
                 } else {
                     noNewJobsCount++;
-                    log.info("⚠️ No new jobs after scroll attempt {} (no new jobs count: {})", 
-                        scrollAttempts + 1, noNewJobsCount);
                 }
-                
-                // Скролимо вниз
-                ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight);");
-                sleep(scrollDelay);
                 
                 scrollAttempts++;
                 
@@ -181,9 +167,7 @@ public class PageInteractionService {
             }
         }
         
-        log.info("✅ Infinite scroll completed. Total attempts: {}, Final job count: {}", 
-            scrollAttempts, previousJobCount);
-        
+        log.info("✅ Scroll completed. Attempts: {}, Final count: {}", scrollAttempts, previousJobCount);
         return previousJobCount > 0;
     }
 
@@ -192,7 +176,36 @@ public class PageInteractionService {
      */
     private int countJobCards(WebDriver driver) {
         try {
-            return driver.findElements(By.cssSelector(JOB_CARD_SELECTOR)).size();
+            List<WebElement> cards = driver.findElements(By.cssSelector(JOB_CARD_SELECTOR));
+            return cards.size();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Рахує кількість карток вакансій з фільтрацією за job functions
+     */
+    private int countJobCardsWithFilter(WebDriver driver, List<String> jobFunctions) {
+        try {
+            List<WebElement> cards = driver.findElements(By.cssSelector(JOB_CARD_SELECTOR));
+            
+            if (jobFunctions == null || jobFunctions.isEmpty()) {
+                return cards.size();
+            }
+            
+            int filteredCount = 0;
+            for (WebElement card : cards) {
+                String cardText = card.getText().toLowerCase();
+                boolean hasMatchingFunction = jobFunctions.stream()
+                    .anyMatch(function -> cardText.contains(function.toLowerCase()));
+                
+                if (hasMatchingFunction) {
+                    filteredCount++;
+                }
+            }
+            
+            return filteredCount;
         } catch (Exception e) {
             return 0;
         }
@@ -493,8 +506,8 @@ public class PageInteractionService {
             tryAlternativeSelectors(driver);
         }
         
-        // Використовуємо гібридний підхід
-        loadContentWithHybridApproach(driver);
+        // Використовуємо гібридний підхід (без фільтрації для загального випадку)
+        loadContentWithHybridApproach(driver, null);
     }
 
     /**

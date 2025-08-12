@@ -144,16 +144,12 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             log.info("🌐 WebDriver initialized successfully");
 
             driver.get(baseUrl);
-            log.info("🌐 Navigated to: {}", baseUrl);
+            log.info("🌐 Moving to: {}", baseUrl);
 
-            // ✅ Очікування завантаження сторінки
-            log.info("🔍 Quick page load check...");
-
-            // Чекаємо 5 секунд на завантаження
+            log.info("🔍 Waiting for load page...");
             pageInteractionService.sleep(5000);
 
-            // ✅ Пошук карток вакансій
-            log.info("🔍 Quick job cards search...");
+            log.info("🔍 Quick job cards searching...");
             boolean pageLoaded = false;
 
             // Спробуємо тільки основні селектори з коротким таймаутом
@@ -231,9 +227,9 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
      * - Спочатку кнопка Load More
      * - Потім автоматичне завантаження при прокрутці
      */
-    private void scrollToLoadMore(WebDriver driver) {
+    private void scrollToLoadMore(WebDriver driver, List<String> jobFunctions) {
         // ✅ ВИКОРИСТОВУЄМО PageInteractionService
-        pageInteractionService.loadContentWithHybridApproach(driver);
+        pageInteractionService.loadContentWithHybridApproach(driver, jobFunctions);
     }
 
     /**
@@ -282,7 +278,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
 
         // ✅ КРОК 3: Скролимо сторінку до низу
         log.info("🔍 КРОК 3: Скролимо сторінку до низу...");
-        scrollToBottom(driver);
+        scrollToLoadMore(driver, jobFunctions);
 
         // ✅ КРОК 4: Тепер шукаємо всі картки вакансій
         log.info("🔍 КРОК 4: Шукаємо всі картки вакансій після завантаження...");
@@ -314,22 +310,11 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
                     log.info("🔍 Processing card {}: {}", i + 1, preview);
                 }
 
-                // ✅ КРОК 5: Фільтрація за job functions (ПЕРШИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
-                if (!hasRequiredJobFunction(card, jobFunctions)) {
-                    if (isFirstCards) {
-                        log.info("🔍 Card {} failed function filter", i + 1);
-                        // Додаткова діагностика для перших карток
-                        String cardText = card.getText().toLowerCase();
-                        log.info("🔍 Card {} text preview: '{}'", i + 1,
-                            cardText.length() > 300 ? cardText.substring(0, 300) + "..." :
-                                cardText);
-                    }
-                    continue;
-                }
+                // ✅ КРОК 5: Пропускаємо фільтрацію за job functions - обробляємо всі картки
                 passedFunctionFilter++;
 
                 if (isFirstCards) {
-                    log.info("🔍 Card {} passed function filter", i + 1);
+                    log.info("🔍 Card {} processing (no function filter)", i + 1);
                 }
 
                 // ✅ КРОК 6: Пошук URL (ДРУГИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
@@ -560,10 +545,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
 
             for (WebElement card : jobCards) {
                 try {
-                    // ✅ КРОК 1: Фільтрація за функціями (ПЕРШИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
-                    if (!hasRequiredJobFunction(card, jobFunctions)) {
-                        continue;
-                    }
+                                    // ✅ КРОК 1: Пропускаємо фільтрацію за функціями - обробляємо всі картки
 
                     // ✅ КРОК 2: Пошук URL (ДРУГИЙ КРОК ЗА НОВОЮ ЛОГІКОЮ)
                     String jobPageUrl = findDirectJobUrl(card);
@@ -643,38 +625,7 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
         }
     }
 
-    private boolean hasRequiredJobFunction(WebElement jobCard, List<String> jobFunctions) {
-        log.info("🔍 Checking job functions: {}", jobFunctions);
 
-        if (jobFunctions == null || jobFunctions.isEmpty()) {
-            log.info("🔍 No required job functions specified, passing all cards");
-            return true;
-        }
-
-        try {
-            String cardText = jobCard.getText().toLowerCase();
-            log.info("🔍 Card text (first 200 chars): '{}'",
-                cardText.length() > 200 ? cardText.substring(0, 200) + "..." : cardText);
-
-            boolean hasFunction = jobFunctions.stream()
-                .anyMatch(function -> {
-                    String functionName = function.toLowerCase();
-                    boolean contains = cardText.contains(functionName);
-                    log.info("🔍 Job function '{}' found: {} in card text", functionName, contains);
-                    if (!contains) {
-                        log.info("🔍 Card text does not contain '{}'. Full card text: '{}'",
-                            functionName, cardText);
-                    }
-                    return contains;
-                });
-
-            log.info("🔍 Card passed job function filter: {}", hasFunction);
-            return hasFunction;
-        } catch (Exception e) {
-            log.warn("⚠️ Error checking job functions: {}", e.getMessage());
-            return true; // В разі помилки пропускаємо
-        }
-    }
 
     private Job createJobFromCard(WebElement card, String jobPageUrl, List<String> jobFunctions) {
         try {
@@ -692,14 +643,11 @@ public class ApplyUrlScraperServiceImpl implements ApplyUrlScraperService {
             String defaultFunction = jobFunctions.isEmpty() ?
                 "Software Engineering" : jobFunctions.get(0);
 
-            log.info("🏢 Company name extracted: '{}' for URL: {}", organizationTitle, jobPageUrl);
-            log.info("💼 Position name: '{}'", positionName);
-            log.info("🏷️ Tags found: {}", tags);
-            log.info("📍 Location: '{}'", location);
-            log.info("📅 Posted date: '{}' (Unix: {})", postedDate,
-                postedDate != null ? postedDate.toEpochSecond(java.time.ZoneOffset.UTC) : "null");
-            log.info("🖼️ Logo URL: '{}'", logoUrl);
-            log.info("📝 Description: '{}'", description != null ? description : "Not found");
+            log.info("📋 Job extracted: '{}' at '{}' | Location: '{}' | Tags: {} | Posted: {} | Logo: {} | Description: {}",
+                positionName, organizationTitle, location, tags,
+                postedDate != null ? postedDate.toEpochSecond(java.time.ZoneOffset.UTC) : "null",
+                logoUrl != null ? "Found" : "Not found",
+                description != null && !description.trim().isEmpty() ? "Found" : "Not found");
 
             // ✅ ВИПРАВЛЕНО: Використовуємо JobCreationService для створення Job з усіма даними
             Job job = jobCreationService.createJobWithAllData(

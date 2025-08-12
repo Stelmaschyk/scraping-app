@@ -189,44 +189,12 @@ public class JobCardProcessingService {
             return List.of();
         }
 
-        log.info("🔍 Filtering {} cards by {} job functions...", cards.size(), jobFunctions.size());
+        log.info("🔍 Processing all {} cards (no function filtering)...", cards.size());
         
-        List<WebElement> filteredCards = cards.stream()
-                .filter(card -> hasRequiredJobFunction(card, jobFunctions))
-                .collect(Collectors.toList());
-        
-        log.info("✅ Filtered to {} cards matching job functions", filteredCards.size());
-        return filteredCards;
+        return cards;
     }
 
-    /**
-     * Перевіряє чи картка має необхідну функцію
-     */
-    private boolean hasRequiredJobFunction(WebElement card, List<String> jobFunctions) {
-        try {
-            String cardText = card.getText().toLowerCase();
-            
-            for (String function : jobFunctions) {
-                if (function != null && !function.trim().isEmpty()) {
-                    String functionLower = function.toLowerCase().trim();
-                    
-                    if (cardText.contains(functionLower) ||
-                        cardText.contains(functionLower.replace(" ", "")) ||
-                        cardText.contains(functionLower.replace(" ", "-"))) {
-                        
-                        log.debug("✅ Card matches job function: '{}'", function);
-                        return true;
-                    }
-                }
-            }
-            
-            return false;
-            
-        } catch (Exception e) {
-            log.debug("⚠️ Error checking job function: {}", e.getMessage());
-            return false;
-        }
-    }
+
 
     /**
      * Знаходить URL вакансії з картки
@@ -340,8 +308,11 @@ public class JobCardProcessingService {
             String logoUrl = dataExtractionService.extractLogoUrl(card);
             String description = dataExtractionService.extractDescription(card);
             
-            log.info("🏢 Company: '{}', Position: '{}', Location: '{}'", 
-                    organizationTitle, positionName, location);
+            log.info("📋 Job extracted: '{}' at '{}' | Location: '{}' | Tags: {} | Posted: {} | Logo: {} | Description: {}",
+                    positionName, organizationTitle, location, tags,
+                    postedDate != null ? postedDate.toEpochSecond(java.time.ZoneOffset.UTC) : "null",
+                    logoUrl != null ? "Found" : "Not found",
+                    description != null && !description.trim().isEmpty() ? "Found" : "Not found");
             
             // Створюємо вакансію
             Job job = jobCreationService.createJobWithAllData(

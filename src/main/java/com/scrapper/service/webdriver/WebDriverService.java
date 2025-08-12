@@ -19,7 +19,6 @@ public class WebDriverService {
 
     /**
      * Створює та налаштовує WebDriver для скрапінгу
-     *
      * @return налаштований WebDriver
      */
     public WebDriver createWebDriver() {
@@ -29,34 +28,12 @@ public class WebDriverService {
     }
 
     /**
-     * Безпечно закриває WebDriver
-     *
+     * Закриває WebDriver
      * @param driver WebDriver для закриття
      */
     public void closeWebDriver(WebDriver driver) {
         webDriverManagerService.closeWebDriver(driver);
     }
-
-    /**
-     * Отримує поточний URL сторінки
-     */
-    public String getCurrentUrl(WebDriver driver) {
-        try {
-            return driver.getCurrentUrl();
-        } catch (Exception e) {
-            log.warn("⚠️ Could not get current URL: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Перевіряє чи WebDriver здоровий
-     */
-    public boolean isWebDriverHealthy(WebDriver driver) {
-        return webDriverManagerService.isWebDriverHealthy(driver);
-    }
-
-
 }
 
 
